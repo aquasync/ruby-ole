@@ -37,15 +37,15 @@ class TestRangesIO < Test::Unit::TestCase
 
 	def test_reading
 		# test selection of initial range, offset within that range
-		pos = 100
+		pos = 80
 		@io.seek pos
 		# test advancing of pos properly, by...
 		chunked = (0...10).map { @io.read 10 }.join
 		# given the file is 160 long:
-		assert_equal 60, chunked.length
+		assert_equal 80, chunked.length
 		@io.seek pos
 		# comparing with a flat read
-		assert_equal chunked, @io.read(60)
+		assert_equal chunked, @io.read(80)
 	end
 end
 

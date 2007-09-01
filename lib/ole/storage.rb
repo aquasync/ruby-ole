@@ -858,7 +858,7 @@ destroy things.
 				# for the case of files, it is assumed that that was handled already
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
-				if 0 #file?
+				if false #file?
 					#self.create_time_str = ?? #Types.load_time create_time_str
 					#self.modify_time_str = ?? #Types.load_time modify_time_str
 				else
