@@ -4,7 +4,7 @@
 # This file intends to provide file system-like api support, a la <tt>zip/zipfilesystem</tt>.
 #
 # Ideally, this will be the recommended interface, allowing Ole::Storage, Dir, and
-# Zip::ZipFile to be used exchangablyk. It should be possible to write recursive copy using
+# Zip::ZipFile to be used exchangably. It should be possible to write recursive copy using
 # the plain api, such that you can copy dirs/files agnostically between any of ole docs, dirs,
 # and zip files.
 #
@@ -19,16 +19,13 @@
 #
 # = Notes
 #
-# *** This file is very incomplete
-# 
-# i think its okay to have an api like this on top, but there are certain things that ole
-# does that aren't captured.
-# <tt>Ole::Storage</tt> can have multiple files with the same name, for example, or with
-# / in the name, and other things that are probably invalid anyway.
-# i think this should remain an addon, built on top of my core api.
-# but still the ideas can be reflected in the core, ie, changing the read/write semantics.
+# <tt>Ole::Storage</tt> files can have multiple files with the same name,
+# or with / in the name, and other things that are probably invalid anyway.
+# This API is unable to access those files, but of course the core, low-
+# level API can.
 #
-# once the core changes are complete, this will be a pretty straight forward file to complete.
+# need to implement some more IO functions on RangesIO, like #puts, #print
+# etc, like AbstractOutputStream from zipfile.
 #
 
 require 'ole/storage'
@@ -45,22 +42,13 @@ module Ole # :nodoc:
 
 		# tries to get a dirent for path. return nil if it doesn't exist
 		# (change it)
-		def dirent_from_path path_str
-			path_str = file.expand_path path_str
-			path = path_str.sub(/^\/*/, '').sub(/\/*$/, '')
+		def dirent_from_path path
 			dirent = @root
-			return dirent if path.empty?
-			path = path.split(/\/+/)
+			path = file.expand_path path
+			path = path.sub(/^\/*/, '').sub(/\/*$/, '').split(/\/+/)
 			until path.empty?
-				#raise "invalid path #{path_str.inspect}" if dirent.file?
 				return nil if dirent.file?
-				if tmp = dirent[path.shift]
-					dirent = tmp
-				else
-					# allow write etc later.
-					#raise "invalid path #{path_str.inspect}"
-					return nil
-				end
+				return nil unless dirent = dirent[path.shift]
 			end
 			dirent
 		end
@@ -78,28 +66,59 @@ module Ole # :nodoc:
 				File.expand_path path
 			end
 
-			def open path_str, mode='r', &block
-				dirent = @ole.dirent_from_path(path_str) rescue nil
-				if dirent
-					# like Errno::EISDIR
-					raise "#{path_str.inspect} is a directory" unless dirent.file?
-					dirent.open(&block)
-				elsif mode == 'w' # FIXME - mode strings are more complex than this.
-					parent = @ole.dirent_from_path(('/' + path_str).sub(/\/[^\/]+$/, '')) rescue nil
-					raise "invalid path #{path_str.inspect}" unless parent
-					parent.new_child :file do |dirent|
-						dirent.name = File.basename path_str
-						dirent.open(&block)
-					end
-				else
-					raise "invalid path #{path_str.inspect}"
-				end
+			# +orig_path+ is just so that we can use the requested path
+			# in the error messages even if it has been already modified
+			def dirent_from_path path, orig_path=nil
+				orig_path ||= path
+				dirent = @ole.dirent_from_path path
+				raise Errno::ENOENT,  orig_path unless dirent
+				raise Errno::EISDIR, orig_path if dirent.dir?
+				dirent
+			end
+			private :dirent_from_path
+
+			def exists? path
+				!!@ole.dirent_from_path(path)
+			end
+			alias exist? :exists?
+
+			def file? path
+				dirent = @ole.dirent_from_path path
+				dirent and dirent.file?
 			end
 
+			def directory? path
+				dirent = @ole.dirent_from_path path
+				dirent and dirent.dir?
+			end
+
+			def open path, mode='r', &block
+				# FIXME - mode strings are more complex than this.
+				if mode == 'w'
+					begin
+						dirent = dirent_from_path path
+					rescue Errno::ENOENT
+						# maybe instead of repeating this everywhere, i should have
+						# a get_parent_dirent function.
+						parent_path, basename = File.split expand_path(path)
+						parent = @ole.dir.send :dirent_from_path, parent_path, path
+						dirent = parent.new_child :file
+						dirent.name = basename
+					end
+				else
+					dirent = dirent_from_path path
+				end
+				# i think mode is supposed to be passed here too
+				dirent.open(&block)
+			end
 			alias new :open
 
+			def size path
+				dirent_from_path(path).size
+			end
+
 			def read path
-				open(path) { |f| f.read }
+				open path, &:read
 			end
 
 			# crappy copy from Dir.
@@ -207,8 +226,7 @@ module Ole # :nodoc:
 				parent = dirent_from_path parent_path, path
 				# now, we first should ensure that it doesn't already exist
 				# either as a file or a directory.
-				dirent = dirent_from_path path rescue nil
-				raise Errno::EEXIST, path if dirent
+				raise Errno::EEXIST, path if parent[basename]
 				parent.new_child(:dir) { |child| child.name = basename }
 				0
 			end

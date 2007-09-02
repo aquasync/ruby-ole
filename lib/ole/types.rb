@@ -18,13 +18,22 @@ module Ole # :nodoc:
 			low, high = str.unpack 'L2'
 			# we ignore these, without even warning about it
 			return nil if low == 0 and high == 0
-			time = EPOCH + (high * (1 << 32) + low) * 1e-7 / 86400 rescue return
+			time = EPOCH + (high * (1 << 32) + low) / 1e7 / 86400 rescue return
 			# extra sanity check...
 			unless (1800...2100) === time.year
 				Log.warn "ignoring unlikely time value #{time.to_s}"
 				return nil
 			end
 			time
+		end
+
+		# +time+ should be able to be either a Time, Date, or DateTime.
+		def self.save_time time
+			# i think i'll convert whatever i get to be a datetime, because of
+			# the covered range.
+			bignum = ((time - Ole::Types::EPOCH) * 86400 * 1e7.to_i)
+			high, low = bignum.divmod 1 << 32
+			[low, high].pack 'L2'
 		end
 
 		# Convert a binary guid into a plain string (will move to proper class later).
