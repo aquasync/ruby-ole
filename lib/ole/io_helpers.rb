@@ -68,8 +68,17 @@ class RangesIO
 	end
 
 	def pos= pos, whence=IO::SEEK_SET
-		# FIXME support other whence values
-		raise NotImplementedError, "#{whence.inspect} not supported" unless whence == IO::SEEK_SET
+		# what am i supposed to do about pos < 0, or > size?
+		case whence
+		when IO::SEEK_SET
+			@pos = pos
+		when IO::SEEK_CUR
+			@pos += pos
+		when IO::SEEN_END
+			@pos = @size - pos
+		else
+			raise NotImplementedError, "#{whence.inspect} not supported" unless whence == IO::SEEK_SET
+		end
 		# just a simple pos calculation. invalidate buffers if we had them
 		@pos = pos
 	end
@@ -133,8 +142,12 @@ class RangesIO
 	def truncate size
 		raise NotImplementedError, 'truncate not supported'
 	end
-	# why not? :)
-	alias size= :truncate
+
+	# using explicit forward instead of an alias now for overriding.
+	# should override truncate.
+	def size=	size
+		truncate size
+	end
 
 	def write data
 		# short cut. needed because truncate 0 may return no ranges, instead of empty range,
@@ -167,6 +180,17 @@ class RangesIO
 		end
 		data_pos
 	end
+
+	# i can wrap it in a buffered io stream that
+	# provides gets, and appropriately handle pos,
+	# truncate. 
+	def gets
+		s = read 1024
+		i = s.index "\n"
+		@pos -= s.length - (i+1)
+		s[0..i]
+	end
+	alias readline :gets
 
 	# this will be generalised to a module later
 	def each_read blocksize=4096

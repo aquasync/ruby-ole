@@ -54,13 +54,58 @@ module Ole # :nodoc:
 		end
 
 		class FileClass
+			class Stat
+				attr_reader :ftype, :size, :blocks, :blksize
+				attr_reader :nlink, :uid, :gid, :dev, :rdev, :ino
+				def initialize dirent
+					@dirent = dirent
+					@size = dirent.size
+					if file?
+						@ftype = 'file'
+						bat = dirent.ole.bat_for_size(dirent.size)
+						@blocks = bat.chain(dirent.first_block).length
+						@blksize = bat.block_size
+					else
+						@ftype = 'directory'
+						@blocks = 0
+						@blksize = 0
+					end
+					# a lot of these are bogus. ole file format has no analogs
+					@nlink = 1
+					@uid, @gid = 0, 0
+					@dev, @rdev = 0, 0
+					@ino = 0
+					# need to add times - atime, mtime, ctime. 
+				end
+
+				alias rdev_major :rdev
+				alias rdev_minor :rdev
+
+				def file?
+					@dirent.file?
+				end
+
+				def directory?
+					@dirent.dir?
+				end
+
+				def inspect
+					pairs = (instance_variables - ['@dirent']).map do |n|
+						"#{n[1..-1]}=#{instance_variable_get n}"
+					end
+					"#<#{self.class} #{pairs * ', '}>"
+				end
+			end
+
 			def initialize ole
 				@ole = ole
 			end
 
 			def expand_path path
+				# get the raw stored pwd value (its blank for root)
+				pwd = @ole.dir.instance_variable_get :@pwd
 				# its only absolute if it starts with a '/'
-				path = "#{@ole.dir.pwd}/#{path}" unless path =~ /^\//
+				path = "#{pwd}/#{path}" unless path =~ /^\//
 				# at this point its already absolute. we use File.expand_path
 				# just for the .. and . handling
 				File.expand_path path
@@ -111,10 +156,25 @@ module Ole # :nodoc:
 				# i think mode is supposed to be passed here too
 				dirent.open(&block)
 			end
-			alias new :open
+
+			# explicit wrapper instead of alias to inhibit block
+			def new path, mode='r'
+				open path, mode
+			end
 
 			def size path
 				dirent_from_path(path).size
+			rescue Errno::EISDIR
+				# kind of arbitrary. I'm getting 4096 from ::File, but
+				# the zip tests want 0.
+				0
+			end
+
+			def stat path
+				# we do this to allow dirs.
+				dirent = @ole.dirent_from_path path
+				raise Errno::ENOENT, path unless dirent
+				Stat.new dirent
 			end
 
 			def read path
@@ -174,7 +234,11 @@ module Ole # :nodoc:
 					dir
 				end
 			end
-			alias new :open
+
+			# as for file, explicit alias to inhibit block
+			def new path, mode='r'
+				open path, mode
+			end
 
 			# pwd is always stored without the trailing slash. we handle
 			# the root case here
