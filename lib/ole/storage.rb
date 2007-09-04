@@ -747,9 +747,21 @@ destroy things.
 			# is just a data holder. 
 			# this can be used for write support if the underlying io object was opened for writing.
 			# maybe take a mode string argument, and do truncation, append etc stuff.
-			def open
+			def open mode='r'
 				return nil unless file?
 				io = RangesIOMigrateable.new self
+				# TODO work on the mode string stuff a bit more.
+				# maybe let the io object know about the mode, so it can refuse
+				# to work for read/write appropriately. maybe redefine all unusable
+				# methods using singleton class to throw errors.
+				# for now, i just want to implement truncation on use of 'w'. later,
+				# i need to do 'a' etc.
+				case mode
+				when 'r', 'r+'
+					# as i don't enforce reading/writing, nothing changes here
+				when 'w'
+					io.truncate 0
+				end
 				if block_given?
 					begin   yield io
 					ensure; io.close

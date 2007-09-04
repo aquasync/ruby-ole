@@ -27,6 +27,28 @@
 # need to implement some more IO functions on RangesIO, like #puts, #print
 # etc, like AbstractOutputStream from zipfile.
 #
+# TODO
+# 
+# - check for all new_child calls. eg Dir.mkdir, and File.open, and also
+#   File.rename, to add in filename length checks (max 32 / 31 or something).
+#   do the automatic truncation, and add in any necessary warnings.
+#
+# - File.split('a/') == File.split('a') == ['.', 'a']
+#   the implication of this, is that things that try to force directory
+#   don't work. like, File.rename('a', 'b'), should work if a is a file
+#   or directory, but File.rename('a/', 'b') should only work if a is
+#   a directory. tricky, need to clean things up a bit more.
+#   i think a general path name => dirent method would work, with flags
+#   about what should raise an error. 
+#
+# - Need to look at streamlining things after getting all the tests passing,
+#   as this file's getting pretty long - almost half the real implementation.
+#   and is probably more inefficient than necessary.
+#   too many exceptions in the expected path of certain functions.
+#
+# - should look at profiles before and after switching ruby-msg to use
+#   the filesystem api.
+#
 
 require 'ole/storage'
 
@@ -153,8 +175,7 @@ module Ole # :nodoc:
 				else
 					dirent = dirent_from_path path
 				end
-				# i think mode is supposed to be passed here too
-				dirent.open(&block)
+				dirent.open mode, &block
 			end
 
 			# explicit wrapper instead of alias to inhibit block
@@ -181,22 +202,53 @@ module Ole # :nodoc:
 				open path, &:read
 			end
 
-			# crappy copy from Dir.
-			def unlink path
-				dirent = @ole.dirent_from_path path
-				# EPERM
-				raise "operation not permitted #{path.inspect}" unless dirent.file?
-				# i think we should free all of our blocks. i think the best way to do that would be
-				# like:
-				# open(path) { |f| f.truncate 0 }. which should free all our blocks from the
-				# allocation table. then if we remove ourself from our parent, we won't be part of
-				# the bat at save time.
-				# i think if you run repack, all free blocks should get zeroed.
-				open(path) { |f| f.truncate 0 }
-				parent = @ole.dirent_from_path(('/' + path).sub(/\/[^\/]+$/, ''))
-				parent.children.delete dirent
-				1 # hmmm. as per ::File ?
+			# most of the work this function does is moving the dirent between
+			# 2 parents. the actual name changing is quite simple.
+			# File.rename can move a file into another folder, which is why i've
+			# done it too, though i think its not always possible...
+			#
+			# FIXME File.rename can be used for directories too....
+			def rename from_path, to_path
+				# check what we want to rename from exists. do it this
+				# way to allow directories.
+				dirent = @ole.dirent_from_path from_path
+				raise Errno::ENOENT, from_path unless dirent
+				# delete what we want to rename to if necessary
+				begin
+					unlink to_path
+				rescue Errno::ENOENT
+					# no worries...
+				end
+				# reparent the dirent
+				from_parent_path, from_basename = File.split expand_path(from_path)
+				to_parent_path, to_basename = File.split expand_path(to_path)
+				from_parent = @ole.dir.send :dirent_from_path, from_parent_path, from_path
+				to_parent = @ole.dir.send :dirent_from_path, to_parent_path, to_path
+				from_parent.children.delete dirent
+				# and also change its name
+				dirent.name = to_basename
+				to_parent.children << dirent
+				0
 			end
+
+			# crappy copy from Dir.
+			def unlink(*paths)
+				paths.each do |path|
+					dirent = @ole.dirent_from_path path
+					# i think we should free all of our blocks from the
+					# allocation table.
+					# i think if you run repack, all free blocks should get zeroed,
+					# but currently the original data is there unmodified.
+					open(path) { |f| f.truncate 0 }
+					# remove ourself from our parent, so we won't be part of the dir
+					# tree at save time.
+					parent_path, basename = File.split expand_path(path)
+					parent = @ole.dir.send :dirent_from_path, parent_path, path
+					parent.children.delete dirent
+				end
+				paths.length # hmmm. as per ::File ?
+			end
+			alias delete :unlink
 		end
 
 		#
@@ -274,6 +326,14 @@ module Ole # :nodoc:
 				dirent = dirent_from_path path
 				# Not sure about adding on the dots...
 				entries = %w[. ..] + dirent.children.map(&:name)
+				# do some checks about un-reachable files
+				seen = {}
+				entries.each do |n|
+					Log.warn "inaccessible file (filename contains slash) - #{n.inspect}" if n['/']
+					Log.warn "inaccessible file (duplicate filename) - #{n.inspect}" if seen[n]
+					seen[n] = true
+				end
+				entries
 			end
 
 			def foreach path, &block
