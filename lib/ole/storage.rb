@@ -53,26 +53,15 @@ module Ole # :nodoc:
 	#
 	# = TODO
 	#
-	# 1. tests. lock down how things work at the moment - mostly good.
-	#    create from scratch works now, as does copying in a subtree of another doc, so
-	#    ole embedded attachment serialization works now. i can save embedded xls in an msg
-	#    into a separate file, and open it. this was a goal. now i would want to implemenet
-	#    to_mime conversion for embedded attachments, that serializes them to ole, but handles
-	#    some separately like various meta file types as plain .wmf attachments perhaps. this
-	#    will give pretty good .eml's from emails with embedded attachments.
-	#    the other todo is .rtf output, with full support for embedded ole objects...
-	# 2. lots of tidying up
-	#    - main FIXME's in this regard are:
-	#      * the custom header cruft for Header and Dirent needs some love.
-	#      * i have a number of classes doing load/save combos: Header, AllocationTable, Dirent,
-	#        and, in a manner of speaking, but arguably different, Storage itself.
-	#        they have differing api's which would be nice to clean.
-	#        AllocationTable::Big must be created aot now, as it is used for all subsequent reads.
-	#     * ole types need work, can't serialize datetime at the moment.
-	# 3. need to fix META_BAT support in #flush.
+	# * the custom header cruft for Header and Dirent needs some love.
+	# * i have a number of classes doing load/save combos: Header, AllocationTable, Dirent,
+	#   and, in a manner of speaking, but arguably different, Storage itself.
+	#   they have differing api's which would be nice to clean.
+	#   AllocationTable::Big must be created aot now, as it is used for all subsequent reads.
+	# * need to fix META_BAT support in #flush.
 	#
 	class Storage
-		VERSION = '1.2.1'
+		VERSION = '1.2.2'
 
 		# The top of the ole tree structure
 		attr_reader :root
@@ -454,8 +443,8 @@ destroy things.
 				table.pack 'L*'
 			end
 
-			# rewriting this to be non-recursive. it broke on a large attachment
-			# building up the chain, causing a stack error. need tail-call elimination...
+			# rewrote this to be non-recursive as it broke on a large attachment
+			# chain with a stack error
 			def chain start
 				a = []
 				idx = start
@@ -929,9 +918,5 @@ destroy things.
 			end
 		end
 	end
-end
-
-if $0 == __FILE__
-	puts Ole::Storage.open(ARGV[0]) { |ole| ole.root.to_tree }
 end
 

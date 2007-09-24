@@ -2,12 +2,14 @@
 # 
 # A file with general support functions used by most files in the project.
 # 
+# These are the only methods added to other classes.
+# 
 
 require 'logger'
 
 class File # :nodoc:
-	# for consistency with StringIO and others. makes more sense than forcing
-	# them to provide a #stat
+	# for interface consistency with StringIO etc (rather than adding #stat
+	# to them). used by RangesIO.
 	def size
 		stat.size
 	end
@@ -32,8 +34,18 @@ module Enumerable # :nodoc:
 	end
 end
 
+# move to support?
+class IO # :nodoc:
+	def self.copy src, dst
+		until src.eof?
+			buf = src.read(4096)
+			dst.write buf
+		end
+	end
+end
+
 class Logger # :nodoc:
-	# A helper method for creating <tt>Logger</tt>s which produce call stack
+	# A helper method for creating a +Logger+ which produce call stack
 	# in their output
 	def self.new_with_callstack logdev=STDERR
 		log = Logger.new logdev

@@ -1,14 +1,3 @@
-
-# move to support?
-class IO # :nodoc:
-	def self.copy src, dst
-		until src.eof?
-			buf = src.read(4096)
-			dst.write buf
-		end
-	end
-end
-
 #
 # = Introduction
 #
@@ -49,13 +38,14 @@ end
 # 
 class RangesIO
 	attr_reader :io, :ranges, :size, :pos
-	# +io+ is the parent io object that we are wrapping.
+	# +io+:: the parent io object that we are wrapping.
 	# 
-	# +ranges+ are byte offsets, either
+	# +ranges+:: byte offsets, either:
 	# 1. an array of ranges [1..2, 4..5, 6..8] or
 	# 2. an array of arrays, where the second is length [[1, 1], [4, 1], [6, 2]] for the above
 	#    (think the way String indexing works)
-	# The +ranges+ provide sequential slices of the file that will be read. they can overlap.
+	#
+	# NOTE: the +ranges+ can overlap.
 	def initialize io, ranges, opts={}
 		@opts = {:close_parent => false}.merge opts
 		@io = io
@@ -68,18 +58,15 @@ class RangesIO
 	end
 
 	def pos= pos, whence=IO::SEEK_SET
-		# what am i supposed to do about pos < 0, or > size?
 		case whence
 		when IO::SEEK_SET
-			@pos = pos
 		when IO::SEEK_CUR
-			@pos += pos
-		when IO::SEEN_END
-			@pos = @size - pos
-		else
-			raise NotImplementedError, "#{whence.inspect} not supported" unless whence == IO::SEEK_SET
+			pos += @pos
+		when IO::SEEK_END
+			pos = @size + pos
+		else raise Errno::EINVAL
 		end
-		# just a simple pos calculation. invalidate buffers if we had them
+		raise Errno::EINVAL unless (0...@size) === pos
 		@pos = pos
 	end
 
@@ -90,19 +77,19 @@ class RangesIO
 		@io.close if @opts[:close_parent]
 	end
 
-	def range_and_offset pos
-		off = nil
-		r = ranges.inject(0) do |total, r|
-			to = total + r[1]
-			if pos <= to
-				off = pos - total
-				break r
+	# returns the [+offset+, +size+], pair inorder to read/write at +pos+
+	# (like a partial range), and its index.
+	def offset_and_size pos
+		total = 0
+		ranges.each_with_index do |(offset, size), i|
+			if pos <= total + size
+				diff = pos - total
+				return [offset + diff, size - diff], i
 			end
-			to
+			total += size
 		end
 		# should be impossible for any valid pos, (0...size) === pos
-		raise "unable to find range for pos #{pos.inspect}" unless off
-		[r, off]
+		raise ArgumentError, "no range for pos #{pos.inspect}"
 	end
 
 	def eof?
@@ -112,26 +99,25 @@ class RangesIO
 	# read bytes from file, to a maximum of +limit+, or all available if unspecified.
 	def read limit=nil
 		data = ''
-		limit ||= size
-		# special case eof
 		return data if eof?
-		r, off = range_and_offset @pos
-		i = ranges.index r
+		limit ||= size
+		partial_range, i = offset_and_size @pos
 		# this may be conceptually nice (create sub-range starting where we are), but
 		# for a large range array its pretty wasteful. even the previous way was. but
 		# i'm not trying to optimize this atm. it may even go to c later if necessary.
-		([[r[0] + off, r[1] - off]] + ranges[i+1..-1]).each do |pos, len|
+		([partial_range] + ranges[i+1..-1]).each do |pos, len|
 			@io.seek pos
 			if limit < len
-				# FIXME this += isn't correct if there is a read error
-				# or something.
-				@pos += limit
-				break data << @io.read(limit) 
+				# convoluted, to handle read errors. s may be nil
+				s = @io.read limit
+				@pos += s.length if s
+				break data << s
 			end
-			# this can also stuff up. if the ranges are beyond the size of the file, we can get
-			# nil here.
-			data << @io.read(len)
-			@pos += len
+			# convoluted, to handle ranges beyond the size of the file
+			s = @io.read len
+			@pos += s.length if s
+			data << s
+			break if s.length != len
 			limit -= len
 		end
 		data
@@ -151,7 +137,7 @@ class RangesIO
 
 	def write data
 		# short cut. needed because truncate 0 may return no ranges, instead of empty range,
-		# thus range_and_offset fails.
+		# thus offset_and_size fails.
 		return 0 if data.empty?
 		data_pos = 0
 		# if we don't have room, we can use the truncate hook to make more space.
@@ -159,13 +145,11 @@ class RangesIO
 			begin
 				truncate @pos + data.length
 			rescue NotImplementedError
-				# FIXME maybe warn instead, then just truncate the data?
-				raise "unable to satisfy write of #{data.length} bytes" 
+				raise IOError, "unable to grow #{inspect} to write #{data.length} bytes" 
 			end
 		end
-		r, off = range_and_offset @pos
-		i = ranges.index r
-		([[r[0] + off, r[1] - off]] + ranges[i+1..-1]).each do |pos, len|
+		partial_range, i = offset_and_size @pos
+		([partial_range] + ranges[i+1..-1]).each do |pos, len|
 			@io.seek pos
 			if data_pos + len > data.length
 				chunk = data[data_pos..-1]
@@ -184,6 +168,7 @@ class RangesIO
 	# i can wrap it in a buffered io stream that
 	# provides gets, and appropriately handle pos,
 	# truncate. 
+	# FIXME
 	def gets
 		s = read 1024
 		i = s.index "\n"
@@ -192,17 +177,12 @@ class RangesIO
 	end
 	alias readline :gets
 
-	# this will be generalised to a module later
-	def each_read blocksize=4096
-		yield read(blocksize) until eof?
-	end
-
 	def inspect
 		# the rescue is for empty files
-		pos, len = *(range_and_offset(@pos)[0] rescue [nil, nil])
+		pos, len = (@ranges[offset_and_size(@pos).last] rescue [nil, nil])
 		range_str = pos ? "#{pos}..#{pos+len}" : 'nil'
-		"#<#{self.class} io=#{io.inspect} size=#@size pos=#@pos "\
-			"current_range=#{range_str}>"
+		"#<#{self.class} io=#{io.inspect}, size=#@size, pos=#@pos, "\
+			"range=#{range_str}>"
 	end
 end
 
