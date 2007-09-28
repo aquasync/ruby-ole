@@ -1,13 +1,14 @@
 #! /usr/bin/ruby
 
-TEST_DIR = File.dirname __FILE__
-$: << "#{TEST_DIR}/../lib"
+$: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
 require 'ole/support'
 require 'stringio'
 
 class TestSupport < Test::Unit::TestCase
+	TEST_DIR = File.dirname __FILE__
+
 	def test_file
 		assert_equal 4096, open("#{TEST_DIR}/oleWithDirs.ole") { |f| f.size }
 		# point is to have same interface as:

@@ -7,8 +7,7 @@ require 'tempfile'
 
 require 'ole/base'
 require 'ole/types'
-# not strictly ole related
-require 'ole/io_helpers'
+require 'ole/ranges_io'
 
 module Ole # :nodoc:
 	# 
@@ -96,8 +95,8 @@ module Ole # :nodoc:
 			@io.size > 0 ? load : clear
 		end
 
-		def self.new arg, mode=nil
-			ole = super
+		def self.open arg, mode=nil
+			ole = new arg, mode
 			if block_given?
 				begin   yield ole
 				ensure; ole.close
@@ -106,20 +105,13 @@ module Ole # :nodoc:
 			end
 		end
 
-		class << self
-			# encouraged
-			alias open :new
-			# deprecated
-			alias load :new
-		end
-
 		# load document from file.
 		def load
 			# we always read 512 for the header block. if the block size ends up being different,
 			# what happens to the 109 fat entries. are there more/less entries?
 			@io.rewind
 			header_block = @io.read 512
-			@header = Header.load header_block
+			@header = Header.new header_block
 
 			# create an empty bbat
 			@bbat = AllocationTable::Big.new self
@@ -132,7 +124,7 @@ module Ole # :nodoc:
 			# get block chain for directories, read it, then split it into chunks and load the
 			# directory entries. semantics changed - used to cut at first dir where dir.type == 0
 			@dirents = @bbat.read(@header.dirent_start).scan(/.{#{Dirent::SIZE}}/mo).
-				map { |str| Dirent.load self, str }.reject { |d| d.type_id == 0 }
+				map { |str| Dirent.new self, str }.reject { |d| d.type_id == 0 }
 
 			# now reorder from flat into a tree
 			# links are stored in some kind of balanced binary tree
@@ -153,7 +145,7 @@ module Ole # :nodoc:
 			@root = @dirents.to_tree.first
 			Log.warn "root name was #{@root.name.inspect}" unless @root.name == 'Root Entry'
 			unused = @dirents.reject(&:idx).length
-			Log.warn "* #{unused} unused directories" if unused > 0
+			Log.warn "#{unused} unused directories" if unused > 0
 
 			# FIXME i don't currently use @header.num_sbat which i should
 			# hmm. nor do i write it. it means what exactly again?
@@ -203,7 +195,7 @@ destroy things.
 			# similarly for the sbat data.
 			io = RangesIOResizeable.new @bbat, @header.sbat_start
 			io.truncate 0
-			io.write @sbat.save
+			io.write @sbat.to_s
 			@header.sbat_start = io.first_block
 			@header.num_sbat = @bbat.chain(@header.sbat_start).length
 			io.close
@@ -214,7 +206,7 @@ destroy things.
 			# truncate. then when its time to write, convert that chain and some chunk of blocks at
 			# the end, into META_BAT blocks. write out the chain, and those meta bat blocks, and its
 			# done.
-			@bbat.table.map! do |b|
+			@bbat.map! do |b|
 				b == AllocationTable::BAT || b == AllocationTable::META_BAT ?
 					AllocationTable::AVAIL : b
 			end
@@ -222,7 +214,7 @@ destroy things.
 	
 			# use crappy loop for now:
 			while true
-				bbat_data = @bbat.save
+				bbat_data = @bbat.to_s
 				#mbat_data = bbat_data.length / @bbat.block_size * 4
 				mbat_chain = @bbat.chain io.first_block
 				raise NotImplementedError, "don't handle writing out extra META_BAT blocks yet" if mbat_chain.length > 109
@@ -236,14 +228,14 @@ destroy things.
 			ranges = io.ranges
 			mbat_chain = @bbat.chain io.first_block
 			io.close
-			mbat_chain.each { |b| @bbat.table[b] = AllocationTable::BAT }
+			mbat_chain.each { |b| @bbat[b] = AllocationTable::BAT }
 			@header.num_bat = mbat_chain.length
 			#p @bbat.truncated_table
 			#p ranges
 			#p mbat_chain
 			# not resizeable!
 			io = RangesIO.new @io, ranges
-			io.write @bbat.save
+			io.write @bbat.to_s
 			io.close
 			mbat_chain += [AllocationTable::AVAIL] * (109 - mbat_chain.length)
 			@header.mbat_start = AllocationTable::EOC
@@ -266,12 +258,11 @@ destroy things.
 			@header.num_mbat = (other_mbat_data.length / new_bbat.block_size.to_f).ceil
 			io.write other_mbat_data
 =end
-
 			@root.type = :dir
 
 			# now seek back and write the header out
 			@io.seek 0
-			@io.write @header.save + mbat_chain.pack('L*')
+			@io.write @header.to_s + mbat_chain.pack('L*')
 			@io.flush
 		end
 
@@ -280,13 +271,9 @@ destroy things.
 			Log.warn 'creating new ole storage object on non-writable io' unless @writeable
 			@header = Header.new
 			@bbat = AllocationTable::Big.new self
-			@root = Dirent.new self, :dir
-			@root.name = 'Root Entry'
+			@root = Dirent.new self, :type => :dir, :name => 'Root Entry'
 			@dirents = [@root]
 			@root.idx = 0
-			@root.children = []
-			# size shouldn't display for non-files
-			@root.size = 0
 			@sb_file.close if @sb_file
 			@sb_file = RangesIOResizeable.new @bbat, AllocationTable::EOC
 			@sbat = AllocationTable::Small.new self
@@ -322,7 +309,12 @@ destroy things.
 			"#<#{self.class} io=#{@io.inspect} root=#{@root.inspect}>"
 		end
 
+		#
 		# A class which wraps the ole header
+		#
+		# Header.new can be both used to load from a string, or to create from
+		# defaults. Serialization is accomplished with the #to_s method.
+		#
 		class Header < Struct.new(
 				:magic, :clsid, :minor_ver, :major_ver, :byte_order, :b_shift, :s_shift,
 				:reserved, :csectdir, :num_bat, :dirent_start, :transacting_signature, :threshold,
@@ -342,18 +334,13 @@ destroy things.
 				4096, EOC, 0, EOC, 0
 			]
 
-			# 2 basic initializations, from scratch, or from a data string.
-			# from scratch will be geared towards creating a new ole object
-			def initialize *values
-				super(*(values.empty? ? DEFAULT : values))
+			def initialize values=DEFAULT
+				values = values.unpack(PACK) if String === values
+				super(*values)
 				validate!
 			end
 
-			def self.load str
-				Header.new(*str.unpack(PACK))
-			end
-
-			def save
+			def to_s
 				to_a.pack PACK
 			end
 
@@ -403,38 +390,40 @@ destroy things.
 		# block, and in extra blocks throughout the file as referenced by the meta
 		# bat.  That chain is linear, as there is no higher level table.
 		#
-		class AllocationTable
+		# AllocationTable.new is used to create an empty table. It can parse a string
+		# with the #load method. Serialization is accomplished with the #to_s method.
+		#
+		class AllocationTable < Array
 			# a free block (I don't currently leave any blocks free), although I do pad out
 			# the allocation table with AVAIL to the block size.
 			AVAIL		 = 0xffffffff
 			EOC			 = 0xfffffffe # end of a chain
-			# these blocks correspond to the bat, and aren't part of a file, nor available.
-			# (I don't currently output these)
+			# these blocks are used for storing the allocation table chains
 			BAT			 = 0xfffffffd
 			META_BAT = 0xfffffffc
 
-			attr_reader :ole, :io, :table, :block_size
+			attr_reader :ole, :io, :block_size
 			def initialize ole
 				@ole = ole
-				@table = []
+				super()
 			end
 
 			def load data
-				@table = data.unpack('L*')
+				replace data.unpack('L*')
 			end
 
-			def truncated_table
+			def truncate
 				# this strips trailing AVAILs. come to think of it, this has the potential to break
 				# bogus ole. if you terminate using AVAIL instead of EOC, like I did before. but that is
 				# very broken. however, if a chain ends with AVAIL, it should probably be fixed to EOC
 				# at load time.
-				temp = @table.reverse
+				temp = reverse
 				not_avail = temp.find { |b| b != AVAIL } and temp = temp[temp.index(not_avail)..-1]
 				temp.reverse
 			end
 
-			def save
-				table = truncated_table #@table
+			def to_s
+				table = truncate
 				# pad it out some
 				num = @ole.bbat.block_size / 4
 				# do you really use AVAIL? they probably extend past end of file, and may shortly
@@ -449,9 +438,9 @@ destroy things.
 				a = []
 				idx = start
 				until idx >= META_BAT
-					raise "broken allocationtable chain" if idx < 0 || idx > @table.length
+					raise "broken allocationtable chain" if idx < 0 || idx > length
 					a << idx
-					idx = @table[idx]
+					idx = self[idx]
 				end
 				Log.warn "invalid chain terminator #{idx}" unless idx == EOC
 				a
@@ -497,12 +486,10 @@ destroy things.
 				open chain, size, &:read
 			end
 
-			# ----------------------
-
 			def get_free_block
-				@table.each_index { |i| return i if @table[i] == AVAIL }
-				@table.push AVAIL
-				@table.length - 1
+				each_index { |i| return i if self[i] == AVAIL }
+				push AVAIL
+				length - 1
 			end
 
 			# must return first_block
@@ -512,10 +499,10 @@ destroy things.
 				old_num_blocks = blocks.length
 				if new_num_blocks < old_num_blocks
 					# de-allocate some of our old blocks. TODO maybe zero them out in the file???
-					(new_num_blocks...old_num_blocks).each { |i| @table[blocks[i]] = AVAIL }
+					(new_num_blocks...old_num_blocks).each { |i| self[blocks[i]] = AVAIL }
 					# if we have a chain, terminate it and return head, otherwise return EOC
 					if new_num_blocks > 0
-						@table[blocks[new_num_blocks-1]] = EOC
+						self[blocks[new_num_blocks-1]] = EOC
 						first_block
 					else EOC
 					end
@@ -526,14 +513,14 @@ destroy things.
 						block = get_free_block
 						# connect the chain. handle corner case of blocks being [] initially
 						if last_block
-							@table[last_block] = block
+							self[last_block] = block
 						else
 							first_block = block
 						end
 						last_block = block
 						# this is just to inhibit the problem where it gets picked as being a free block
 						# again next time around.
-						@table[last_block] = EOC
+						self[last_block] = EOC
 					end
 					first_block
 				else first_block
@@ -656,16 +643,12 @@ destroy things.
 		# was considering separate classes for dirs and files. some methods/attrs only
 		# applicable to one or the other.
 		#
-		# Note that Dirent is still using a home grown Struct variant, with explicit
-		# MEMBERS etc. any reason for that still?
-		#
-		class Dirent
-			MEMBERS = [
+		class Dirent < Struct.new(
 				:name_utf16, :name_len, :type_id, :colour, :prev, :next, :child,
 				:clsid, :flags, # dirs only
 				:create_time_str, :modify_time_str, # files only
 				:first_block, :size, :reserved
-			]
+			)
 			PACK = 'a64 S C C L3 a16 L a8 a8 L2 a4'
 			SIZE = 128
 			TYPE_MAP = {
@@ -675,6 +658,7 @@ destroy things.
 				2 => :file,
 				5 => :root
 			}
+			# something to do with the fact that the tree is supposed to be red-black
 			COLOUR_MAP = {
 				0 => :red,
 				1 => :black
@@ -682,62 +666,58 @@ destroy things.
 			# used in the next / prev / child stuff to show that the tree ends here.
 			# also used for first_block for directory.
 			EOT = 0xffffffff
+			DEFAULT = [
+				0.chr * 2, 2, 0, # will get overwritten
+				1, EOT, EOT, EOT,
+				0.chr * 16, 0, nil, nil,
+				AllocationTable::EOC, 0, 0.chr * 4
+			]
 
 			include Enumerable
 
-			# Dirent's should be created in 1 of 2 ways, either Dirent.new ole, [:dir/:file/:root],
-			# or Dirent.load '... dirent data ...'
-			# its a bit clunky, but thats how it is at the moment. you can assign to type, but
-			# shouldn't.
-
+			# i think its just used by the tree building
 			attr_accessor :idx
 			# This returns all the children of this +Dirent+. It is filled in
 			# when the tree structure is recreated.
 			attr_accessor :children
-			attr_reader :ole, :type, :create_time, :modify_time, :name
-			def initialize ole, type
-				@ole = ole
-				# this isn't really good enough. need default values put in there.
-				@values = [
-					0.chr * 2, 2, 0, # will get overwritten
-					1, EOT, EOT, EOT,
-					0.chr * 16, 0, nil, nil,
-					AllocationTable::EOC, 0, 0.chr * 4]
-				# maybe check types here. 
-				@type = type
-				@create_time = @modify_time = nil
-				@children = []
+			attr_accessor :name, :type
+			attr_reader :ole, :create_time, :modify_time
+			def initialize ole, values=DEFAULT, opts={}
+				@ole = ole				
+				values, opts = DEFAULT, values if Hash === values
+				values = values.unpack(PACK) if String === values
+				super(*values)
+
+				# extra parsing from the actual struct values
+				@name = opts[:name] || Types::FROM_UTF16.iconv(name_utf16[0...name_len].sub(/\x00\x00$/, ''))
+				@type = if opts[:type]
+					unless TYPE_MAP.values.include?(opts[:type])
+						raise ArgumentError, "unknown type #{opts[:type].inspect}"
+					end
+					opts[:type]
+				else
+					TYPE_MAP[type_id] or raise "unknown type #{type_id.inspect}"
+				end
+
+				# further extra type specific stuff
 				if file?
-					@create_time = Time.now
-					@modify_time = Time.now
+					@create_time ||= Time.now
+					@modify_time ||= Time.now
+					@create_time = Types.load_time(create_time_str) if create_time_str
+					@modify_time = Types.load_time(create_time_str) if modify_time_str
+					@children = nil
+				else
+					@create_time = nil
+					@modify_time = nil
+					self.size = 0 unless @type == :root
+					@children = []
 				end
 			end
 
-			def self.load ole, str
-				# load should function without the need for the initializer.
-				dirent = Dirent.allocate
-				dirent.load ole, str
-				dirent
-			end
-
-			def load ole, str
-				@ole = ole
-				@values = str.unpack PACK
-				@name = Types::FROM_UTF16.iconv name_utf16[0...name_len].sub(/\x00\x00$/, '')
-				@type = TYPE_MAP[type_id] or raise "unknown type #{type_id.inspect}"
-				if file?
-					@create_time = Types.load_time create_time_str
-					@modify_time = Types.load_time modify_time_str
-				end
-			end
-
-			# only defined for files really. and the above children stuff is only for children.
-			# maybe i should have some sort of File and Dir class, that subclass Dirents? a dirent
-			# is just a data holder. 
 			# this can be used for write support if the underlying io object was opened for writing.
 			# maybe take a mode string argument, and do truncation, append etc stuff.
 			def open mode='r'
-				return nil unless file?
+				raise Errno::EISDIR unless file?
 				io = RangesIOMigrateable.new self
 				# TODO work on the mode string stuff a bit more.
 				# maybe let the io object know about the mode, so it can refuse
@@ -765,38 +745,27 @@ destroy things.
 
 			def dir?
 				# to count root as a dir.
-				type != :file
+				!file?
 			end
 
 			def file?
 				type == :file
 			end
 
+			# does this still need to exist?
 			def time
-				# time is nil for streams, otherwise try to parse either of the time pairse (not
-				# sure of their meaning - created / modified?)
-				#@time ||= file? ? nil : (Dirent.parse_time(secs1, days1) || Dirent.parse_time(secs2, days2))
 				create_time || modify_time
 			end
 
+			# different each to the usual struct each.
+			# may possibly get removed
 			def each(&block)
 				@children.each(&block)
 			end
-			
-			def [] idx
-				return children[idx] if Integer === idx
-				# path style look up.
-				# maybe take another arg to allow creation? or leave that to the filesystem
-				# add on. 
-				# not sure if '/' is a valid char in an Dirent#name, so no splitting etc at
-				# this level.
-				# also what about warning about multiple hits for the same name?
-				children.find { |child| idx === child.name }
-			end
 
-			# solution for the above '/' thing for now.
-			def / path
-				self[path]
+			# may possibly get removed
+			def / name
+				children.find { |child| name === child.name }
 			end
 
 			def to_tree
@@ -813,21 +782,16 @@ destroy things.
 				end
 			end
 
-			MEMBERS.each_with_index do |sym, i|
-				define_method(sym) { @values[i] }
-				define_method(sym.to_s + '=') { |val| @values[i] = val }
-			end
-
-			def to_a
-				@values
-			end
-
 			# flattens the tree starting from here into +dirents+. note it modifies its argument.
 			def flatten dirents=[]
 				@idx = dirents.length
 				dirents << self
-				children.each { |child| child.flatten dirents }
-				self.child = Dirent.flatten_helper children
+				if file?
+					self.prev = self.next = self.child = EOT
+				else
+					children.each { |child| child.flatten dirents } 
+					self.child = Dirent.flatten_helper children
+				end
 				dirents
 			end
 
@@ -844,7 +808,6 @@ destroy things.
 				this.idx
 			end
 
-			attr_accessor :name, :type
 			def save
 				tmp = Types::TO_UTF16.iconv(name)
 				tmp = tmp[0, 62] if tmp.length > 62
@@ -866,7 +829,7 @@ destroy things.
 					self.create_time_str = 0.chr * 8
 					self.modify_time_str = 0.chr * 8
 				end
-				@values.pack PACK
+				to_a.pack PACK
 			end
 
 			def inspect
@@ -888,7 +851,7 @@ destroy things.
 			# and for creation of a dirent. don't like the name. is it a file or a directory?
 			# assign to type later? io will be empty.
 			def new_child type
-				child = Dirent.new ole, type
+				child = Dirent.new ole, :type => type
 				children << child
 				yield child if block_given?
 				child

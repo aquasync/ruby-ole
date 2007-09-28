@@ -1,13 +1,14 @@
 #! /usr/bin/ruby
 
-TEST_DIR = File.dirname __FILE__
-$: << "#{TEST_DIR}/../lib"
+$: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
-require 'ole/io_helpers'
+require 'ole/ranges_io'
 require 'stringio'
 
 class TestRangesIO < Test::Unit::TestCase
+	TEST_DIR = File.dirname __FILE__
+
 	def setup
 		# read from ourself, also using overlaps.
 		ranges = [100..200, 0..10, 100..150]
@@ -65,11 +66,25 @@ class TestRangesIO < Test::Unit::TestCase
 
 	# should test gets, lineno, and other IO methods we want to have
 	def test_gets
-		assert_equal "equire 'ole/io_helpers'\n", @io.gets
+		assert_equal "io'\n", @io.gets
 	end
 
-	# would need to move to StringIO to do this.
 	def test_write
+		str = File.read "#{TEST_DIR}/test_ranges_io.rb"
+		@io = RangesIO.new StringIO.new(str), @io.ranges
+		assert_equal "io'\nrequir", str[100, 10]
+		@io.write 'testing testing'
+		assert_equal 'testing te', str[100, 10]
+		@io.seek 0
+		assert_equal 'testing te', @io.read(10)
+		# lets write over a range barrier
+		assert_equal '#! /usr/bi', str[0, 10]
+		assert_equal "LE__\n\n\tdef", str[195, 10]
+		@io.write 'x' * 100
+		assert_equal 'x' * 10, str[0, 10]
+		assert_equal "xxxxx\n\tdef", str[195, 10]
+		# write enough to overflow the file
+		assert_raises(IOError) { @io.write 'x' * 60 }
 	end
 end
 

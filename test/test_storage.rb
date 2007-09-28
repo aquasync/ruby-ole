@@ -1,7 +1,6 @@
 #! /usr/bin/ruby
 
-TEST_DIR = File.dirname __FILE__
-$: << "#{TEST_DIR}/../lib"
+$: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
 require 'ole/storage'
@@ -17,6 +16,8 @@ require 'stringio'
 # should test resizeable and migrateable IO.
 
 class TestStorageRead < Test::Unit::TestCase
+	TEST_DIR = File.dirname __FILE__
+
 	def setup
 		@ole = Ole::Storage.open "#{TEST_DIR}/test_word_6.doc", 'rb'
 	end
@@ -37,9 +38,9 @@ class TestStorageRead < Test::Unit::TestCase
 	def test_fat
 		# the fat block has all the numbers from 5..118 bar 117
 		bbat_table = [112] + ((5..118).to_a - [112, 117])
-		assert_equal bbat_table, @ole.bbat.table.reject { |i| i >= (1 << 32) - 3 }, 'bbat'
+		assert_equal bbat_table, @ole.bbat.reject { |i| i >= (1 << 32) - 3 }, 'bbat'
 		sbat_table = (1..43).to_a - [2, 3]
-		assert_equal sbat_table, @ole.sbat.table.reject { |i| i >= (1 << 32) - 3 }, 'sbat'
+		assert_equal sbat_table, @ole.sbat.reject { |i| i >= (1 << 32) - 3 }, 'sbat'
 	end
 
 	def test_directories
@@ -56,7 +57,7 @@ class TestStorageRead < Test::Unit::TestCase
 	def test_data
 		# test the ole storage type
 		type = 'Microsoft Word 6.0-Dokument'
-		assert_equal type, @ole.root["\001CompObj"].read[/^.{32}([^\x00]+)/m, 1]
+		assert_equal type, (@ole.root/"\001CompObj").read[/^.{32}([^\x00]+)/m, 1]
 		# i was actually not loading data correctly before, so carefully check everything here
 		hashes = [-482597081, 285782478, 134862598, -863988921]
 		assert_equal hashes, @ole.root.children.map { |child| child.read.hash }
@@ -64,6 +65,8 @@ class TestStorageRead < Test::Unit::TestCase
 end
 
 class TestStorageWrite < Test::Unit::TestCase
+	TEST_DIR = File.dirname __FILE__
+
 	def sha1 str
 		Digest::SHA1.hexdigest str
 	end
@@ -93,12 +96,11 @@ class TestStorageWrite < Test::Unit::TestCase
 
 	def test_create_from_scratch_hash
 		io = StringIO.new
-		Ole::Storage.new(io) { }
+		Ole::Storage.open(io) { }
 		assert_equal '6bb9d6c1cdf1656375e30991948d70c5fff63d57', sha1(io.string)
 		# more repack test, note invariance
 		Ole::Storage.open io, &:repack
 		assert_equal '6bb9d6c1cdf1656375e30991948d70c5fff63d57', sha1(io.string)
 	end
 end
-
 

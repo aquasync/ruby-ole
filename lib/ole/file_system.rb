@@ -70,7 +70,7 @@ module Ole # :nodoc:
 			path = path.sub(/^\/*/, '').sub(/\/*$/, '').split(/\/+/)
 			until path.empty?
 				return nil if dirent.file?
-				return nil unless dirent = dirent[path.shift]
+				return nil unless dirent = dirent/path.shift
 			end
 			dirent
 		end
