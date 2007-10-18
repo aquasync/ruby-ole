@@ -79,10 +79,11 @@ module Ole # :nodoc:
 			@close_parent, @io = if String === arg
 				[true, open(arg, mode || 'rb')]
 			else
-				raise 'unable to specify mode string with io object' if mode
+				raise ArgumentError, 'unable to specify mode string with io object' if mode
 				[false, arg]
 			end
 			# do we have this file opened for writing? don't know of a better way to tell
+			# (unless we parse the mode string in the open case)
 			@writeable = begin
 				@io.flush
 				true
@@ -92,6 +93,7 @@ module Ole # :nodoc:
 			# silence undefined warning in clear
 			@sb_file = nil
 			# if the io object has data, we should load it, otherwise start afresh
+			# this should be based on the mode string rather.
 			@io.size > 0 ? load : clear
 		end
 
@@ -113,9 +115,8 @@ module Ole # :nodoc:
 			header_block = @io.read 512
 			@header = Header.new header_block
 
-			# create an empty bbat
+			# create an empty bbat.
 			@bbat = AllocationTable::Big.new self
-			# extra mbat blocks
 			mbat_blocks = (0...@header.num_mbat).map { |i| i + @header.mbat_start }
 			bbat_chain = (header_block[Header::SIZE..-1] + @bbat.read(mbat_blocks)).unpack 'L*'
 			# am i using num_bat in the right way?
@@ -155,8 +156,8 @@ module Ole # :nodoc:
 		end
 
 		def close
-			flush if @writeable
 			@sb_file.close
+			flush if @writeable
 			@io.close if @close_parent
 		end
 
@@ -174,48 +175,53 @@ this stuff will ensure reliability of input better. otherwise, its actually wort
 directly after read, to ensure the above is probably acounted for, before subsequent writes possibly
 destroy things.
 =end
+
+		# the flush method is the main "save" method. all file contents are always
+		# written directly to the file by the RangesIO objects, all this method does
+		# is write out all the file meta data - dirents, allocation tables, file header
+		# etc.
 		def flush
-			# recreate dirs from our tree, split into dirs and big and small files
-			@root.type = :root
+			# update root dirent, and flatten dirent tree
 			@root.name = 'Root Entry'
 			@root.first_block = @sb_file.first_block
 			@root.size = @sb_file.size
 			@dirents = @root.flatten
 
-			# maybe i should move the block form up to RangesIO, and get it for free at all levels.
-			# Dirent#open gets block form for free then
-			io = RangesIOResizeable.new @bbat, @header.dirent_start
-			io.truncate 0
-			@dirents.each { |dirent| io.write dirent.save }
-			padding = (io.size / @bbat.block_size.to_f).ceil * @bbat.block_size - io.size
-			io.write 0.chr * padding
-			@header.dirent_start = io.first_block
-			io.close
+			# serialize the dirents using the bbat
+			RangesIOResizeable.open @bbat, @header.dirent_start do |io|
+				io.truncate 0
+				@dirents.each { |dirent| io.write dirent.to_s }
+				padding = (io.size / @bbat.block_size.to_f).ceil * @bbat.block_size - io.size
+				io.write 0.chr * padding
+				@header.dirent_start = io.first_block
+			end
 
-			# similarly for the sbat data.
-			io = RangesIOResizeable.new @bbat, @header.sbat_start
-			io.truncate 0
-			io.write @sbat.to_s
-			@header.sbat_start = io.first_block
-			@header.num_sbat = @bbat.chain(@header.sbat_start).length
-			io.close
-
-			# what follows will be slightly more complex for the bat fiddling.
+			# serialize the sbat
+			# perhaps the blocks used by the sbat should be marked with BAT?
+			RangesIOResizeable.open @bbat, @header.sbat_start do |io|
+				io.truncate 0
+				io.write @sbat.to_s
+				@header.sbat_start = io.first_block
+				@header.num_sbat = @bbat.chain(@header.sbat_start).length
+			end
 
 			# create RangesIOResizeable hooked up to the bbat. use that to claim bbat blocks using
 			# truncate. then when its time to write, convert that chain and some chunk of blocks at
 			# the end, into META_BAT blocks. write out the chain, and those meta bat blocks, and its
 			# done.
+			# this is perhaps not good, as we reclaim all bat blocks here, which
+			# may include the sbat we just wrote. FIXME
 			@bbat.map! do |b|
 				b == AllocationTable::BAT || b == AllocationTable::META_BAT ?
 					AllocationTable::AVAIL : b
 			end
 			io = RangesIOResizeable.new @bbat, AllocationTable::EOC
 	
-			# use crappy loop for now:
+			# currently we use a loop. this could be better, but basically,
+			# the act of writing out the bat, itself requires blocks which get
+			# recorded in the bat.
 			while true
 				bbat_data = @bbat.to_s
-				#mbat_data = bbat_data.length / @bbat.block_size * 4
 				mbat_chain = @bbat.chain io.first_block
 				raise NotImplementedError, "don't handle writing out extra META_BAT blocks yet" if mbat_chain.length > 109
 				# so we can ignore meta blocks in this calculation:
@@ -230,25 +236,16 @@ destroy things.
 			io.close
 			mbat_chain.each { |b| @bbat[b] = AllocationTable::BAT }
 			@header.num_bat = mbat_chain.length
-			#p @bbat.truncated_table
-			#p ranges
-			#p mbat_chain
-			# not resizeable!
-			io = RangesIO.new @io, ranges
-			io.write @bbat.to_s
-			io.close
+
+			# now finally write the bbat, using a not resizable io.
+			RangesIO.open(@io, ranges) { |io| io.write @bbat.to_s }
+
+			# this is the mbat
 			mbat_chain += [AllocationTable::AVAIL] * (109 - mbat_chain.length)
 			@header.mbat_start = AllocationTable::EOC
 			@header.num_mbat = 0
 
 =begin
-			# Old save code. remove shortly
-
-			bbat_data = new_bbat.save
-			# must exist as linear chain stored in header.
-			@header.num_bat = (bbat_data.length / new_bbat.block_size.to_f).ceil
-			base = io.pos / new_bbat.block_size - 1
-			io.write bbat_data
 			# now that spanned a number of blocks:
 			mbat = (0...@header.num_bat).map { |i| i + base }
 			mbat += [AllocationTable::AVAIL] * (109 - mbat.length) if mbat.length < 109
@@ -258,7 +255,6 @@ destroy things.
 			@header.num_mbat = (other_mbat_data.length / new_bbat.block_size.to_f).ceil
 			io.write other_mbat_data
 =end
-			@root.type = :dir
 
 			# now seek back and write the header out
 			@io.seek 0
@@ -271,7 +267,7 @@ destroy things.
 			Log.warn 'creating new ole storage object on non-writable io' unless @writeable
 			@header = Header.new
 			@bbat = AllocationTable::Big.new self
-			@root = Dirent.new self, :type => :dir, :name => 'Root Entry'
+			@root = Dirent.new self, :type => :root, :name => 'Root Entry'
 			@dirents = [@root]
 			@root.idx = 0
 			@sb_file.close if @sb_file
@@ -295,7 +291,7 @@ destroy things.
 			IO.copy @io, temp_io
 			clear
 			Storage.open temp_io do |temp_ole|
-				temp_ole.root.type = :dir
+				#temp_ole.root.type = :dir
 				Dirent.copy temp_ole.root, root
 			end
 		end
@@ -405,6 +401,7 @@ destroy things.
 			attr_reader :ole, :io, :block_size
 			def initialize ole
 				@ole = ole
+				@sparse = true
 				super()
 			end
 
@@ -434,9 +431,8 @@ destroy things.
 
 			# rewrote this to be non-recursive as it broke on a large attachment
 			# chain with a stack error
-			def chain start
+			def chain idx
 				a = []
-				idx = start
 				until idx >= META_BAT
 					raise "broken allocationtable chain" if idx < 0 || idx > length
 					a << idx
@@ -446,48 +442,59 @@ destroy things.
 				a
 			end
 			
+			# Turn a chain (an array given by +chain+) of blocks (optionally
+			# truncated to +size+) into an array of arrays describing the stretches of
+			# bytes in the file that it belongs to.
+			#
+			# The blocks are Big or Small blocks depending on the table type.
+			def blocks_to_ranges chain, size=nil
+				# truncate the chain if required
+				chain = chain[0...(size.to_f / block_size).ceil] if size
+				# convert chain to ranges of the block size
+				ranges = chain.map { |i| [block_size * i, block_size] }
+				# truncate final range if required
+				ranges.last[1] -= (ranges.length * block_size - size) if ranges.last and size
+				ranges
+			end
+
 			def ranges chain, size=nil
 				chain = self.chain(chain) unless Array === chain
 				blocks_to_ranges chain, size
 			end
 
-			# Turn a chain (an array given by +chain+) of big blocks, optionally
-			# truncated to +size+, into an array of arrays describing the stretches of
-			# bytes in the file that it belongs to.
-			#
-			# Big blocks are of size Ole::Storage::Header#b_size, and are stored
-			# directly in the parent file.
-			# truncate the chain if required
-			# convert chain to ranges of the block size
-			# truncate final range if required
-
-			def blocks_to_ranges chain, size=nil
-				chain = chain[0...(size.to_f / block_size).ceil] if size
-				ranges = chain.map { |i| [block_size * i, block_size] }
-				ranges.last[1] -= (ranges.length * block_size - size) if ranges.last and size
-				ranges
-			end
-
 			# quick shortcut. chain can be either a head (in which case the table is used to
 			# turn it into a chain), or a chain. it is converted to ranges, then to rangesio.
-			# its not resizeable or migrateable. it probably could be resizeable though, using
-			# self as the bat. but what would the first_block be?
-			def open chain, size=nil
-				io = RangesIO.new @io, ranges(chain, size)
-				if block_given?
-					begin   yield io
-					ensure; io.close
-					end
-				else io
-				end
+			def open chain, size=nil, &block
+				RangesIO.open @io, ranges(chain, size), &block
 			end
 
 			def read chain, size=nil
 				open chain, size, &:read
 			end
 
-			def get_free_block
-				each_index { |i| return i if self[i] == AVAIL }
+			# catch any method that may add an AVAIL somewhere in the middle, thus invalidating
+			# the @sparse speedup for free_block. annoying using eval, but define_method won't
+			# work for this.
+			# FIXME
+			[:map!, :collect!].each do |name|
+				eval <<-END
+					def #{name}(*args, &block)
+						@sparse = true
+						super
+					end
+				END
+			end
+
+			def []= idx, val
+				@sparse = true if val == AVAIL
+				super
+			end
+
+			def free_block
+				if @sparse
+					i = index(AVAIL) and return i
+				end
+				@sparse = false
 				push AVAIL
 				length - 1
 			end
@@ -510,7 +517,7 @@ destroy things.
 					# need some more blocks.
 					last_block = blocks.last
 					(new_num_blocks - old_num_blocks).times do
-						block = get_free_block
+						block = free_block
 						# connect the chain. handle corner case of blocks being [] initially
 						if last_block
 							self[last_block] = block
@@ -518,8 +525,6 @@ destroy things.
 							first_block = block
 						end
 						last_block = block
-						# this is just to inhibit the problem where it gets picked as being a free block
-						# again next time around.
 						self[last_block] = EOC
 					end
 					first_block
@@ -585,8 +590,7 @@ destroy things.
 		end
 
 		# like RangesIOResizeable, but Ole::Storage::Dirent specific. provides for migration
-		# between bats based on size, and updating the dirent, instead of the ole copy back
-		# on close.
+		# between bats based on size, and updating the dirent.
 		class RangesIOMigrateable < RangesIOResizeable
 			attr_reader :dirent
 			def initialize dirent
@@ -596,7 +600,7 @@ destroy things.
 
 			def truncate size
 				bat = @dirent.ole.bat_for_size size
-				if bat != @bat
+				if bat.class != @bat.class
 					# bat migration needed! we need to backup some data. the amount of data
 					# should be <= @ole.header.threshold, so we can just hold it all in one buffer.
 					# backup this
@@ -643,6 +647,8 @@ destroy things.
 		# was considering separate classes for dirs and files. some methods/attrs only
 		# applicable to one or the other.
 		#
+		# As with the other classes, #to_s performs the serialization.
+		#
 		class Dirent < Struct.new(
 				:name_utf16, :name_len, :type_id, :colour, :prev, :next, :child,
 				:clsid, :flags, # dirs only
@@ -672,8 +678,6 @@ destroy things.
 				0.chr * 16, 0, nil, nil,
 				AllocationTable::EOC, 0, 0.chr * 4
 			]
-
-			include Enumerable
 
 			# i think its just used by the tree building
 			attr_accessor :idx
@@ -757,12 +761,6 @@ destroy things.
 				create_time || modify_time
 			end
 
-			# different each to the usual struct each.
-			# may possibly get removed
-			def each(&block)
-				@children.each(&block)
-			end
-
 			# may possibly get removed
 			def / name
 				children.find { |child| name === child.name }
@@ -808,12 +806,13 @@ destroy things.
 				this.idx
 			end
 
-			def save
+			def to_s
 				tmp = Types::TO_UTF16.iconv(name)
 				tmp = tmp[0, 62] if tmp.length > 62
 				tmp += 0.chr * 2
 				self.name_len = tmp.length
 				self.name_utf16 = tmp + 0.chr * (64 - tmp.length)
+				# if i can remove assignments to type, then this can be deleted.
 				begin
 					self.type_id = TYPE_MAP.to_a.find { |id, name| @type == name }.first
 				rescue
@@ -822,9 +821,10 @@ destroy things.
 				# for the case of files, it is assumed that that was handled already
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
-				if false #file?
-					#self.create_time_str = ?? #Types.load_time create_time_str
-					#self.modify_time_str = ?? #Types.load_time modify_time_str
+				if file?
+					# should actually update the times
+					self.create_time_str = Types.save_time @create_time
+					#self.modify_time_str = Types.save_time Time.now
 				else
 					self.create_time_str = 0.chr * 8
 					self.modify_time_str = 0.chr * 8
@@ -867,7 +867,7 @@ destroy things.
 			def self.copy src, dst
 				# copies the contents of src to dst. must be the same type. this will throw an
 				# error on copying to root. maybe this will recurse too much for big documents??
-				raise 'differing types' if src.type == :file and dst.type != :file
+				raise 'differing types' if src.file? and !dst.file?
 				dst.name = src.name
 				if src.dir?
 					src.children.each do |src_child|

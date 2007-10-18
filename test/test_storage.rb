@@ -70,6 +70,10 @@ class TestStorageWrite < Test::Unit::TestCase
 	def sha1 str
 		Digest::SHA1.hexdigest str
 	end
+
+	# try and test all the various things the #flush function does
+	def test_flush
+	end
 	
 	# FIXME
 	# don't really want to lock down the actual internal api's yet. this will just

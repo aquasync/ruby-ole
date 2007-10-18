@@ -31,6 +31,8 @@ module Ole # :nodoc:
 		def self.save_time time
 			# i think i'll convert whatever i get to be a datetime, because of
 			# the covered range.
+			return 0.chr * 8 unless time
+			time = time.send(:to_datetime) if Time === time
 			bignum = ((time - Ole::Types::EPOCH) * 86400 * 1e7.to_i)
 			high, low = bignum.divmod 1 << 32
 			[low, high].pack 'L2'

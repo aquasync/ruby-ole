@@ -57,6 +57,18 @@ class RangesIO
 		@pos = 0
 	end
 
+	# add block form. TODO add test for this
+	def self.open(*args, &block)
+		ranges_io = new(*args)
+		if block_given?
+			begin;  yield ranges_io
+			ensure; ranges_io.close
+			end
+		else
+			ranges_io
+		end
+	end
+
 	def pos= pos, whence=IO::SEEK_SET
 		case whence
 		when IO::SEEK_SET
