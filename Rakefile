@@ -53,7 +53,7 @@ end
 
 Rake::GemPackageTask.new(spec) do |p|
 	p.gem_spec = spec
-	p.need_tar = true
+	p.need_tar = false
 	p.need_zip = false
 	p.package_dir = 'build'
 end

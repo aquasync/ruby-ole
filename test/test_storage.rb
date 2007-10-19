@@ -54,7 +54,7 @@ class TestStorageRead < Test::Unit::TestCase
 		assert_equal 'WordDocument', @ole.root.children[2].name
 	end
 
-	def test_data
+	def test_read
 		# test the ole storage type
 		type = 'Microsoft Word 6.0-Dokument'
 		assert_equal type, (@ole.root/"\001CompObj").read[/^.{32}([^\x00]+)/m, 1]
@@ -105,6 +105,19 @@ class TestStorageWrite < Test::Unit::TestCase
 		# more repack test, note invariance
 		Ole::Storage.open io, &:repack
 		assert_equal '6bb9d6c1cdf1656375e30991948d70c5fff63d57', sha1(io.string)
+	end
+
+	def test_create_dirent
+		Ole::Storage.open StringIO.new do |ole|
+			dirent = Ole::Storage::Dirent.new ole, :name => 'test name', :type => :dir
+			assert_equal 'test name', dirent.name
+			assert_equal :dir, dirent.type
+			# for a dirent created from scratch, type_id is currently not set until serialization:
+			assert_equal 0, dirent.type_id
+			dirent.to_s
+			assert_equal 1, dirent.type_id
+			assert_raises(ArgumentError) { Ole::Storage::Dirent.new ole, :type => :bogus }
+		end
 	end
 end
 

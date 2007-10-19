@@ -684,8 +684,8 @@ destroy things.
 			# This returns all the children of this +Dirent+. It is filled in
 			# when the tree structure is recreated.
 			attr_accessor :children
-			attr_accessor :name, :type
-			attr_reader :ole, :create_time, :modify_time
+			attr_accessor :name
+			attr_reader :ole, :type, :create_time, :modify_time
 			def initialize ole, values=DEFAULT, opts={}
 				@ole = ole				
 				values, opts = DEFAULT, values if Hash === values
@@ -812,19 +812,15 @@ destroy things.
 				tmp += 0.chr * 2
 				self.name_len = tmp.length
 				self.name_utf16 = tmp + 0.chr * (64 - tmp.length)
-				# if i can remove assignments to type, then this can be deleted.
-				begin
-					self.type_id = TYPE_MAP.to_a.find { |id, name| @type == name }.first
-				rescue
-					raise "unknown type #{type.inspect}"
-				end
+				# type_id can perhaps be set in the initializer, as its read only now.
+				self.type_id = TYPE_MAP.to_a.find { |id, name| @type == name }.first
 				# for the case of files, it is assumed that that was handled already
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
 				if file?
 					# should actually update the times
 					self.create_time_str = Types.save_time @create_time
-					#self.modify_time_str = Types.save_time Time.now
+					self.modify_time_str = Types.save_time Time.now
 				else
 					self.create_time_str = 0.chr * 8
 					self.modify_time_str = 0.chr * 8
@@ -859,7 +855,7 @@ destroy things.
 
 			def delete child
 				# remove from our child array, so that on reflatten and re-creation of @dirents, it will be gone
-				raise "#{child.inspect} not a child of #{self.inspect}" unless @children.delete child
+				raise ArgumentError, "#{child.inspect} not a child of #{self.inspect}" unless @children.delete child
 				# free our blocks
 				child.open { |io| io.truncate 0 }
 			end

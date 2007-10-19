@@ -19,6 +19,16 @@ class TestRangesIO < Test::Unit::TestCase
 		@io.close
 	end
 
+	def test_open
+		# block form
+		f = open("#{TEST_DIR}/test_ranges_io.rb")
+		assert_equal false, f.closed?
+		RangesIO.open f, []
+		assert_equal false, f.closed?
+		RangesIO.open(f, [], :close_parent => true) {}
+		assert_equal true, f.closed?
+	end
+
 	def test_basics
 		assert_equal 160, @io.size
 		assert_match %r{size=160,.*range=100\.\.200}, @io.inspect

@@ -1,0 +1,11 @@
+= TODO
+
+* ability to inhibit update of timestamps (bool, off by default)
+  this will fix currently broken tests relying on md5 hashes.
+  
+* ability to zero out padding and unused blocks
+
+* more benchmarking.
+
+* check endianness issues.
+
