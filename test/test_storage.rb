@@ -26,6 +26,10 @@ class TestStorageRead < Test::Unit::TestCase
 		@ole.close
 	end
 
+	def test_invalid
+		assert_raises(Ole::Storage::FormatError) { Ole::Storage.open StringIO.new(0.chr * 1024) }
+	end
+
 	def test_header
 		# should have further header tests, testing the validation etc.
 		assert_equal 17,  @ole.header.to_a.length

@@ -288,8 +288,8 @@ module Ole # :nodoc:
 			end
 
 			# as for file, explicit alias to inhibit block
-			def new path, mode='r'
-				open path, mode
+			def new path
+				open path
 			end
 
 			# pwd is always stored without the trailing slash. we handle
@@ -350,14 +350,14 @@ module Ole # :nodoc:
 				parent = dirent_from_path parent_path, path
 				# now, we first should ensure that it doesn't already exist
 				# either as a file or a directory.
-				raise Errno::EEXIST, path if parent[basename]
+				raise Errno::EEXIST, path if parent/basename
 				parent.new_child(:dir) { |child| child.name = basename }
 				0
 			end
 
 			def rmdir path
 				dirent = dirent_from_path path
-				raise Errno::ENOTEMPTY, orig_path unless dirent.children.empty?
+				raise Errno::ENOTEMPTY, path unless dirent.children.empty?
 
 				# now delete it, how to do that? the canonical representation that is
 				# maintained is the root tree, and the children array. we must remove it

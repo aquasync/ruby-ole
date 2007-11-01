@@ -4,7 +4,6 @@ $: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
 require 'ole/support'
-require 'stringio'
 
 class TestSupport < Test::Unit::TestCase
 	TEST_DIR = File.dirname __FILE__
@@ -35,6 +34,86 @@ class TestSupport < Test::Unit::TestCase
 		src, dst = StringIO.new(str), StringIO.new
 		IO.copy src, dst
 		assert_equal str, dst.string
+	end
+
+	def test_string
+		str = "aa aa ||| aa aa"
+		assert_equal [0, 3, 10, 13], str.indexes('aa')
+		# this is mostly a check that regexp quote is used.
+		assert_equal [6, 7, 8], str.indexes('|')
+		# note not [6, 7] - no overlaps
+		assert_equal [6], str.indexes('||')
+	end
+end
+
+class TestRecursivelyEnumerable < Test::Unit::TestCase
+	class Container
+		include RecursivelyEnumerable
+	
+		def initialize *children
+			@children = children
+		end
+	
+		def each_child(&block)
+			@children.each(&block)
+		end
+	
+		def inspect
+			"#<Container>"
+		end
+	end
+	
+	def setup
+		@root = Container.new(
+			Container.new(1),
+			Container.new(2,
+				Container.new(
+					Container.new(3)
+				)
+			),
+			4
+		)
+	end
+
+	def test_find
+		i = 0
+		found = @root.recursive.find do |obj|
+			i += 1
+			obj == 4
+		end
+		assert_equal found, 4
+		assert_equal 9, i
+
+		i = 0
+		found = @root.recursive(:breadth_first).find do |obj|
+			i += 1
+			obj == 4
+		end
+		assert_equal found, 4
+		assert_equal 4, i
+
+		# this is to make sure we hit the breadth first child cache
+		i = 0
+		found = @root.recursive(:breadth_first).find do |obj|
+			i += 1
+			obj == 3
+		end
+		assert_equal found, 3
+		assert_equal 9, i
+	end
+
+	def test_to_tree
+		assert_equal <<-'end', @root.to_tree
+- #<Container>
+  |- #<Container>
+  |  \- 1
+  |- #<Container>
+  |  |- 2
+  |  \- #<Container>
+  |     \- #<Container>
+  |        \- 3
+  \- 4
+		end
 	end
 end
 

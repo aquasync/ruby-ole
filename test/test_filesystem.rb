@@ -659,31 +659,40 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 
 end
 
-=begin
 class ZipFsDirectoryTest < Test::Unit::TestCase
 	TEST_ZIP = "zipWithDirs_copy.zip"
 
 	def setup
-		File.copy("data/zipWithDirs.zip", TEST_ZIP)
+		# we use an in memory copy of the file instead of the original
+		# file based.
+		@io = StringIO.new File.read(TEST_DIR + '/oleWithDirs.ole')
 	end
 
+	def teardown
+		@io.close if @io
+	end
+	
 	def test_delete
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert_raise(Errno::ENOENT, "No such file or directory - NoSuchFile.txt") {
 				zf.dir.delete("NoSuchFile.txt")
 			}
-			assert_raise(Errno::EINVAL, "Invalid argument - file1") {
+			# see explanation below, touch a && ruby -e 'Dir.delete "a"' gives ENOTDIR not EINVAL
+			assert_raise(Errno::ENOTDIR, "Invalid argument - file1") {
 				zf.dir.delete("file1")
 			}
 			assert(zf.file.exists?("dir1"))
-			zf.dir.delete("dir1")
-			assert(! zf.file.exists?("dir1"))
+			#zf.dir.delete("dir1")
+			#assert(! zf.file.exists?("dir1"))
+			# ^ this was allowed in zipfilesystem, but my code follows Dir.delete, and requires that
+			# the directory be empty first. need to delete recursively if you want other behaviour.
+			assert_raises(Errno::ENOTEMPTY) { zf.dir.delete('dir1') }
 		}
 	end
 
 	def test_mkdir
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert_raise(Errno::EEXIST, "File exists - dir1") { 
 				zf.dir.mkdir("file1") 
@@ -695,13 +704,14 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 			zf.dir.mkdir("newDir")
 			assert(zf.file.directory?("newDir"))
 			assert(!zf.file.exists?("newDir2"))
-			zf.dir.mkdir("newDir2", 3485)
-			assert(zf.file.directory?("newDir2"))
+			# FIXME - mode not supported yet
+			#zf.dir.mkdir("newDir2", 3485)
+			#assert(zf.file.directory?("newDir2"))
 		}
 	end
 	
 	def test_pwd_chdir_entries
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert_equal("/", zf.dir.pwd)
 
@@ -709,23 +719,26 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 				zf.dir.chdir "no such dir"
 			}
 			
-			assert_raise(Errno::EINVAL, "Invalid argument - file1") {
+			# changed this to ENOTDIR, which is what touch a; ruby -e "Dir.chdir('a')" gives you.
+			assert_raise(Errno::ENOTDIR, "Invalid argument - file1") {
 				zf.dir.chdir "file1"
 			}
 
-			assert_equal(["dir1", "dir2", "file1"].sort, zf.dir.entries(".").sort)
+			assert_equal(['.', '..', "dir1", "dir2", "file1"].sort, zf.dir.entries(".").sort)
 			zf.dir.chdir "dir1"
 			assert_equal("/dir1", zf.dir.pwd)
-			assert_equal(["dir11", "file11", "file12"], zf.dir.entries(".").sort)
+			assert_equal(['.', '..', "dir11", "file11", "file12"], zf.dir.entries(".").sort)
 			
 			zf.dir.chdir "../dir2/dir21"
 			assert_equal("/dir2/dir21", zf.dir.pwd)
-			assert_equal(["dir221"].sort, zf.dir.entries(".").sort)
+			assert_equal(['.', '..', "dir221"].sort, zf.dir.entries(".").sort)
 		}
 	end
 
+	# results here are a bit different from zip/zipfilesystem, as i've chosen to fake '.'
+	# and '..'
 	def test_foreach
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 
 			blockCalled = false
@@ -741,22 +754,25 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 
 			entries = []
 			zf.dir.foreach(".") { |e| entries << e }
-			assert_equal(["dir1", "dir2", "file1"].sort, entries.sort)
+			assert_equal(['.', '..', "dir1", "dir2", "file1"].sort, entries.sort)
 
 			entries = []
 			zf.dir.foreach("dir1") { |e| entries << e }
-			assert_equal(["dir11", "file11", "file12"], entries.sort)
+			assert_equal(['.', '..', "dir11", "file11", "file12"], entries.sort)
 		}
 	end
 
+=begin
+	# i've gone for NoMethodError instead.
 	def test_chroot
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert_raise(NotImplementedError) {
 				zf.dir.chroot
 			}
 		}
 	end
+=end
 
 	# Globbing not supported yet
 	#def test_glob
@@ -765,7 +781,7 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 	#end
 
 	def test_open_new
-		ZipFile.open(TEST_ZIP) {
+		Ole::Storage.open(@io) {
 			|zf|
 
 			assert_raise(Errno::ENOTDIR, "Not a directory - file1") {
@@ -777,18 +793,19 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 			}
 
 			d = zf.dir.new(".")
-			assert_equal(["file1", "dir1", "dir2"].sort, d.entries.sort)
+			assert_equal(['.', '..', "file1", "dir1", "dir2"].sort, d.entries.sort)
 			d.close
 
 			zf.dir.open("dir1") {
 				|d|
-				assert_equal(["dir11", "file11", "file12"].sort, d.entries.sort)
+				assert_equal(['.', '..', "dir11", "file11", "file12"].sort, d.entries.sort)
 			}
 		}
 	end
 
 end
 
+=begin
 class ZipFsDirIteratorTest < Test::Unit::TestCase
 	
 	FILENAME_ARRAY = [ "f1", "f2", "f3", "f4", "f5", "f6"  ]

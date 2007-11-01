@@ -1,3 +1,37 @@
+class IOModeString
+	def initialize mode='r'
+		@mode = mode
+		if @mode['b']
+			@binary = true
+			@mode = @mode.sub 'b', ''
+		else
+			@binary = false
+		end
+		if @mode[/\+$/]
+			@plus = true
+			@mode = @mode.sub(/\+$/, '')
+		else
+			@plus = false
+		end
+	end
+
+	def explicit_binary?
+		@binary
+	end
+
+	def binary?
+		RUBY_PLATFORM !~ /win/ or @binary
+	end
+
+	def to_s
+		@mode
+	end
+
+	def inspect
+		"#<#{self.class}:#{to_s.inspect}>"
+	end
+end
+
 #
 # = Introduction
 #
@@ -179,7 +213,7 @@ class RangesIO
 
 	# i can wrap it in a buffered io stream that
 	# provides gets, and appropriately handle pos,
-	# truncate. 
+	# truncate. mostly added just to past the tests.
 	# FIXME
 	def gets
 		s = read 1024

@@ -2,7 +2,6 @@
 
 $: << File.dirname(__FILE__) + '/..'
 
-require 'stringio'
 require 'tempfile'
 
 require 'ole/base'
@@ -60,6 +59,10 @@ module Ole # :nodoc:
 	# * need to fix META_BAT support in #flush.
 	#
 	class Storage
+		# thrown for any bogus OLE file errors.
+		class FormatError < StandardError # :nodoc:
+		end
+
 		VERSION = '1.2.2'
 
 		# The top of the ole tree structure
@@ -137,7 +140,7 @@ module Ole # :nodoc:
 					return [] if idx == Dirent::EOT
 					d = self[idx]
 					d.children = to_tree d.child
-					raise "directory #{d.inspect} used twice" if d.idx
+					raise FormatError, "directory #{d.inspect} used twice" if d.idx
 					d.idx = idx
 					to_tree(d.prev) + [d] + to_tree(d.next)
 				end
@@ -282,7 +285,7 @@ destroy things.
 			case temp
 			when :file; Tempfile.open 'w+', &method(:repack_using_io)
 			when :mem;  StringIO.open(&method(:repack_using_io))
-			else raise "unknown temp backing #{temp.inspect}"
+			else raise ArgumentError, "unknown temp backing #{temp.inspect}"
 			end
 		end
 
@@ -341,7 +344,7 @@ destroy things.
 			end
 
 			def validate!
-				raise "OLE2 signature is invalid" unless magic == MAGIC
+				raise FormatError, "OLE2 signature is invalid" unless magic == MAGIC
 				if num_bat == 0 or # is that valid for a completely empty file?
 					 # not sure about this one. basically to do max possible bat given size of mbat
 					 num_bat > 109 && num_bat > 109 + num_mbat * (1 << b_shift - 2) or
@@ -351,7 +354,7 @@ destroy things.
 					 s_shift > b_shift or b_shift <= 6 or b_shift >= 31 or
 					 # we only handle little endian
 					 byte_order != "\xfe\xff"
-					raise "not valid OLE2 structured storage file"
+					raise FormatError, "not valid OLE2 structured storage file"
 				end
 				# relaxed this, due to test-msg/qwerty_[1-3]*.msg they all had
 				# 3 for this value. 
@@ -434,7 +437,7 @@ destroy things.
 			def chain idx
 				a = []
 				until idx >= META_BAT
-					raise "broken allocationtable chain" if idx < 0 || idx > length
+					raise FormatError, "broken allocationtable chain" if idx < 0 || idx > length
 					a << idx
 					idx = self[idx]
 				end
@@ -500,36 +503,28 @@ destroy things.
 			end
 
 			# must return first_block
-			def resize_chain first_block, size
+			def resize_chain blocks, size
 				new_num_blocks = (size / block_size.to_f).ceil
-				blocks = chain first_block
 				old_num_blocks = blocks.length
 				if new_num_blocks < old_num_blocks
 					# de-allocate some of our old blocks. TODO maybe zero them out in the file???
 					(new_num_blocks...old_num_blocks).each { |i| self[blocks[i]] = AVAIL }
-					# if we have a chain, terminate it and return head, otherwise return EOC
-					if new_num_blocks > 0
-						self[blocks[new_num_blocks-1]] = EOC
-						first_block
-					else EOC
-					end
+					self[blocks[new_num_blocks-1]] = EOC if new_num_blocks > 0
+					blocks.slice! new_num_blocks..-1
 				elsif new_num_blocks > old_num_blocks
 					# need some more blocks.
 					last_block = blocks.last
 					(new_num_blocks - old_num_blocks).times do
 						block = free_block
 						# connect the chain. handle corner case of blocks being [] initially
-						if last_block
-							self[last_block] = block
-						else
-							first_block = block
-						end
+						self[last_block] = block if last_block
+						blocks << block
 						last_block = block
 						self[last_block] = EOC
 					end
-					first_block
-				else first_block
 				end
+				# update ranges, and return that also now
+				blocks
 			end
 
 			class Big < AllocationTable
@@ -568,15 +563,18 @@ destroy things.
 			def initialize bat, first_block, size=nil
 				@bat = bat
 				self.first_block = first_block
-				super @bat.io, @bat.ranges(first_block, size)
+				# we know cache the blocks chain, for faster resizing.
+				@blocks = @bat.chain first_block
+				super @bat.io, @bat.ranges(@blocks, size)
 			end
 
 			def truncate size
 				# note that old_blocks is != @ranges.length necessarily. i'm planning to write a
 				# merge_ranges function that merges sequential ranges into one as an optimization.
-				self.first_block = @bat.resize_chain first_block, size
-				@ranges = @bat.ranges first_block, size
+				@bat.resize_chain @blocks, size
+				@ranges = @bat.ranges @blocks, size
 				@pos = @size if @pos > size
+				self.first_block = @blocks.empty? ? AllocationTable::EOC : @blocks.first
 
 				# don't know if this is required, but we explicitly request our @io to grow if necessary
 				# we never shrink it though. maybe this belongs in allocationtable, where smarter decisions
@@ -655,6 +653,8 @@ destroy things.
 				:create_time_str, :modify_time_str, # files only
 				:first_block, :size, :reserved
 			)
+			include RecursivelyEnumerable
+
 			PACK = 'a64 S C C L3 a16 L a8 a8 L2 a4'
 			SIZE = 128
 			TYPE_MAP = {
@@ -700,7 +700,7 @@ destroy things.
 					end
 					opts[:type]
 				else
-					TYPE_MAP[type_id] or raise "unknown type #{type_id.inspect}"
+					TYPE_MAP[type_id] or raise FormatError, "unknown type_id #{type_id.inspect}"
 				end
 
 				# further extra type specific stuff
@@ -718,8 +718,6 @@ destroy things.
 				end
 			end
 
-			# this can be used for write support if the underlying io object was opened for writing.
-			# maybe take a mode string argument, and do truncation, append etc stuff.
 			def open mode='r'
 				raise Errno::EISDIR unless file?
 				io = RangesIOMigrateable.new self
@@ -734,6 +732,8 @@ destroy things.
 					# as i don't enforce reading/writing, nothing changes here
 				when 'w'
 					io.truncate 0
+				else
+					raise NotImplementedError, "unsupported mode - #{mode.inspect}"
 				end
 				if block_given?
 					begin   yield io
@@ -747,16 +747,16 @@ destroy things.
 				open { |io| io.read limit }
 			end
 
+			def file?
+				type == :file
+			end
+
 			def dir?
 				# to count root as a dir.
 				!file?
 			end
 
-			def file?
-				type == :file
-			end
-
-			# does this still need to exist?
+			# move to ruby-msg. and remove from here
 			def time
 				create_time || modify_time
 			end
@@ -766,18 +766,8 @@ destroy things.
 				children.find { |child| name === child.name }
 			end
 
-			def to_tree
-				if children and !children.empty?
-					str = "- #{inspect}\n"
-					children.each_with_index do |child, i|
-						last = i == children.length - 1
-						child.to_tree.split(/\n/).each_with_index do |line, j|
-							str << "  #{last ? (j == 0 ? "\\" : ' ') : '|'}#{line}\n"
-						end
-					end
-					str
-				else "- #{inspect}\n"
-				end
+			def each_child(&block)
+				@children.each(&block)
 			end
 
 			# flattens the tree starting from here into +dirents+. note it modifies its argument.
@@ -818,7 +808,6 @@ destroy things.
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
 				if file?
-					# should actually update the times
 					self.create_time_str = Types.save_time @create_time
 					self.modify_time_str = Types.save_time Time.now
 				else
@@ -863,7 +852,7 @@ destroy things.
 			def self.copy src, dst
 				# copies the contents of src to dst. must be the same type. this will throw an
 				# error on copying to root. maybe this will recurse too much for big documents??
-				raise 'differing types' if src.file? and !dst.file?
+				raise ArgumentError, 'differing types' if src.file? and !dst.file?
 				dst.name = src.name
 				if src.dir?
 					src.children.each do |src_child|
