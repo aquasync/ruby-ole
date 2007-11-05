@@ -217,7 +217,7 @@ module Ole # :nodoc:
 				begin
 					unlink to_path
 				rescue Errno::ENOENT
-					# no worries...
+					# we actually get here, but rcov doesn't think so
 				end
 				# reparent the dirent
 				from_parent_path, from_basename = File.split expand_path(from_path)

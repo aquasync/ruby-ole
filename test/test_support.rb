@@ -71,7 +71,8 @@ class TestRecursivelyEnumerable < Test::Unit::TestCase
 					Container.new(3)
 				)
 			),
-			4
+			4,
+			Container.new()
 		)
 	end
 
@@ -99,7 +100,7 @@ class TestRecursivelyEnumerable < Test::Unit::TestCase
 			obj == 3
 		end
 		assert_equal found, 3
-		assert_equal 9, i
+		assert_equal 10, i
 	end
 
 	def test_to_tree
@@ -112,7 +113,8 @@ class TestRecursivelyEnumerable < Test::Unit::TestCase
   |  \- #<Container>
   |     \- #<Container>
   |        \- 3
-  \- 4
+  |- 4
+  \- #<Container>
 		end
 	end
 end

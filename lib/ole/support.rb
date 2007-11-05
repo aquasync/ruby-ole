@@ -148,6 +148,7 @@ module RecursivelyEnumerable
 			end
 			child = next_child
 		end
+		return unless child
 		# child is the last child
 		io << "#{prefix}\\- #{child.send method}\n"
 		if child.respond_to? :to_tree_helper

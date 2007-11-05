@@ -1,22 +1,15 @@
 = TODO
 
+* finish fleshing out tests - 100% coverage (currently 95%).
+* add mbat support as part of that.
+* audit unpack strings to fix endianness issues.
+
 * ability to inhibit update of timestamps (bool, off by default)
   this will fix currently broken tests relying on md5 hashes.
-
-* finish fleshing out tests - 100% coverage.
-
-* add mbat support as part of that.
-
-* check endianness issues.
-  
 * ability to zero out padding and unused blocks
+* add the property set and enhanced variant types support
 
 * more benchmarking, profiling, and speed fixes.
 
-* add the property set and enhanced variant types support
-
-* release version 1.3.1
-
 * supposedly vba does something weird to ole files. test that.
-
 * properly credit all external sources.

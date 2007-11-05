@@ -65,6 +65,8 @@ module Ole # :nodoc:
 
 		VERSION = '1.2.2'
 
+		# options used at creation time
+		attr_reader :opts
 		# The top of the ole tree structure
 		attr_reader :root
 		# The tree structure in its original flattened form. only valid after #load, or #flush.
@@ -77,7 +79,11 @@ module Ole # :nodoc:
 
 		# maybe include an option hash, and allow :close_parent => true, to be more general.
 		# +arg+ should be either a file, or an +IO+ object, and needs to be seekable.
-		def initialize arg, mode=nil
+		def initialize arg, mode=nil, opts={}
+			opts, mode = mode, nil if Hash === mode
+			opts = {:update_timestamps => true}.merge(opts)
+			@opts = opts
+	
 			# get the io object
 			@close_parent, @io = if String === arg
 				[true, open(arg, mode || 'rb')]
@@ -100,8 +106,8 @@ module Ole # :nodoc:
 			@io.size > 0 ? load : clear
 		end
 
-		def self.open arg, mode=nil
-			ole = new arg, mode
+		def self.open arg, mode=nil, opts={}
+			ole = new arg, mode, opts
 			if block_given?
 				begin   yield ole
 				ensure; ole.close
@@ -293,7 +299,7 @@ destroy things.
 			@io.rewind
 			IO.copy @io, temp_io
 			clear
-			Storage.open temp_io do |temp_ole|
+			Storage.open temp_io, nil, @opts do |temp_ole|
 				#temp_ole.root.type = :dir
 				Dirent.copy temp_ole.root, root
 			end
@@ -705,8 +711,9 @@ destroy things.
 
 				# further extra type specific stuff
 				if file?
-					@create_time ||= Time.now
-					@modify_time ||= Time.now
+					default_time = @ole.opts[:update_timestamps] ? Time.now : nil
+					@create_time ||= default_time
+					@modify_time ||= default_time
 					@create_time = Types.load_time(create_time_str) if create_time_str
 					@modify_time = Types.load_time(create_time_str) if modify_time_str
 					@children = nil
@@ -756,14 +763,23 @@ destroy things.
 				!file?
 			end
 
-			# move to ruby-msg. and remove from here
-			def time
-				create_time || modify_time
-			end
-
-			# may possibly get removed
 			def / name
 				children.find { |child| name === child.name }
+			end
+
+			def [] idx
+				if String === idx
+					warn 'String form of Dirent#[] is deprecated'
+					self / idx
+				else
+					super
+				end
+			end
+
+			# move to ruby-msg. and remove from here
+			def time
+				warn 'Dirent#time is deprecated'
+				create_time || modify_time
 			end
 
 			def each_child(&block)
@@ -808,8 +824,10 @@ destroy things.
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
 				if file?
-					self.create_time_str = Types.save_time @create_time
-					self.modify_time_str = Types.save_time Time.now
+					if @ole.opts[:update_timestamps]
+						self.create_time_str = Types.save_time @create_time
+						self.modify_time_str = Types.save_time Time.now
+					end
 				else
 					self.create_time_str = 0.chr * 8
 					self.modify_time_str = 0.chr * 8
@@ -824,7 +842,7 @@ destroy things.
 					tmp = read 9
 					data = tmp.length == 9 ? tmp[0, 5] + '...' : tmp
 					str << " size=#{size}" +
-						"#{time ? ' time=' + time.to_s.inspect : nil}" +
+						"#{modify_time ? ' modify_time=' + modify_time.to_s.inspect : nil}" +
 						" data=#{data.inspect}"
 				else
 					# there is some dir specific stuff. like clsid, flags.

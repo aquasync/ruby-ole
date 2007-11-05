@@ -585,7 +585,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 	end
 	
 	def test_open_write
-		Ole::Storage.new(@io) {
+		Ole::Storage.open(@io) {
 			|zf|
 
 			zf.file.open("test_open_write_entry", "w") {
@@ -608,7 +608,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 	end
 
 	def test_rename
-		Ole::Storage.new(@io) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert_raise(Errno::ENOENT, "") { 
 				zf.file.rename("NoSuchFile", "bimse")
@@ -620,7 +620,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 			zf.file.rename('dir1', 'dir9')
 		}
 
-		Ole::Storage.new(@io) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert(! zf.file.exists?("file1"))
 			assert(zf.file.exists?("newNameForFile1"))
@@ -629,7 +629,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 	end
 
 	def do_test_delete_or_unlink(symbol)
-		Ole::Storage.new(@io) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert(zf.file.exists?("dir2/dir21/dir221/file2221"))
 			zf.file.send(symbol, "dir2/dir21/dir221/file2221")
@@ -646,7 +646,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 			assert_raise(Errno::EISDIR) { zf.file.send(symbol, "dir1/dir11/") }
 		}
 
-		Ole::Storage.new(@io) {
+		Ole::Storage.open(@io) {
 			|zf|
 			assert(! zf.file.exists?("dir2/dir21/dir221/file2221"))
 			assert(! zf.file.exists?("dir1/file11"))
@@ -707,6 +707,8 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 			# FIXME - mode not supported yet
 			#zf.dir.mkdir("newDir2", 3485)
 			#assert(zf.file.directory?("newDir2"))
+			zf.dir.rmdir 'newDir'
+			assert(!zf.file.exists?("newDir"))
 		}
 	end
 	
@@ -727,6 +729,8 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 			assert_equal(['.', '..', "dir1", "dir2", "file1"].sort, zf.dir.entries(".").sort)
 			zf.dir.chdir "dir1"
 			assert_equal("/dir1", zf.dir.pwd)
+			zf.dir.chdir('dir11') { assert_equal '/dir1/dir11', zf.dir.pwd }
+			assert_equal '/dir1', zf.dir.pwd
 			assert_equal(['.', '..', "dir11", "file11", "file12"], zf.dir.entries(".").sort)
 			
 			zf.dir.chdir "../dir2/dir21"
