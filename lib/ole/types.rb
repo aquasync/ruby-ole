@@ -4,8 +4,120 @@ require 'date'
 require 'ole/base'
 
 module Ole # :nodoc:
-	# FIXME
+	#
+	# The Types module contains all the serialization and deserialization code for standard ole
+	# types.
+	#
+	# It also defines all the variant type constants, and symbolic names.
+	#
 	module Types
+		# for anything that we don't have serialization code for
+		class Data < String
+			def self.load str
+				new str
+			end
+			
+			def self.dump str
+				str.to_s
+			end
+		end
+
+		class Lpstr < Data
+		end
+
+		# for VT_LPWSTR
+		class Lpwstr < String
+			FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
+			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
+			
+			def self.load str
+				new FROM_UTF16.iconv(str)
+			end
+			
+			def self.dump str
+				TO_UTF16.iconv str
+			end
+		end
+
+		# for VT_FILETIME
+		class FileTime < DateTime
+			SIZE = 8
+			EPOCH = new 1601, 1, 1
+
+			# Create a +DateTime+ object from a struct +FILETIME+
+			# (http://msdn2.microsoft.com/en-us/library/ms724284.aspx).
+			#
+			# Converts +str+ to two 32 bit time values, comprising the high and low 32 bits of
+			# the 100's of nanoseconds since 1st january 1601 (Epoch).
+			def self.load str
+				low, high = str.to_s.unpack 'L2'
+				# we ignore these, without even warning about it
+				return nil if low == 0 and high == 0
+				# switched to rational, and fixed the off by 1 second error i sometimes got.
+				# time = EPOCH + (high * (1 << 32) + low) / 1e7 / 86400 rescue return
+				# use const_get to ensure we can return anything which subclasses this (VT_DATE?)
+				const_get('EPOCH') + Rational(high * (1 << 32) + low, 1e7.to_i * 86400) rescue return
+				# extra sanity check...
+				#unless (1800...2100) === time.year
+				#	Log.warn "ignoring unlikely time value #{time.to_s}"
+				#	return nil
+				#end
+				#time
+			end
+			
+			# +time+ should be able to be either a Time, Date, or DateTime.
+			def self.dump time
+				# i think i'll convert whatever i get to be a datetime, because of
+				# the covered range.
+				return 0.chr * SIZE unless time
+				time = time.send(:to_datetime) if Time === time
+				# don't bother to use const_get here
+				bignum = (time - EPOCH) * 86400 * 1e7.to_i
+				high, low = bignum.divmod 1 << 32
+				[low, high].pack 'L2'
+			end
+		end
+
+		# for VT_CLSID
+		# Unlike most of the other conversions, the Guid's are serialized/deserialized by actually
+		# doing nothing! (eg, _load & _dump are null ops)
+		# Rather, its just a string with a different inspect string, and it includes a
+		# helper method for creating a Guid from that readable form (#format).
+		class Clsid < String
+			SIZE = 16
+			UNPACK = 'L S S CC C6'
+
+			def self.load str
+				new str.to_s
+			end
+			
+			def self.dump guid
+				return 0.chr * SIZE unless guid
+				# allow use of plain strings in place of guids.
+				guid['-'] ? parse(guid) : guid
+			end
+			
+			def self.parse str
+				vals = str.scan(/[a-f\d]+/i).map(&:hex)
+				if vals.length == 5
+					# this is pretty ugly
+					vals[3] = ('%04x' % vals[3]).scan(/../).map(&:hex)
+					vals[4] = ('%012x' % vals[4]).scan(/../).map(&:hex)
+					guid = new vals.flatten.pack(UNPACK)
+					return guid unless guid.delete('{}') == str.downcase.delete('{}')
+				end
+				raise ArgumentError, 'invalid guid - %p' % str
+			end
+
+			def format
+				"%08x-%04x-%04x-%02x%02x-#{'%02x' * 6}" % unpack(UNPACK)
+			end
+			
+			def inspect
+				"#<#{self.class}:{#{format}}>"
+			end
+		end
+
 		#
 		# The OLE variant types, extracted from
 		# http://www.marin.clara.net/COM/variant_type_definitions.htm.
@@ -77,55 +189,31 @@ module Ole # :nodoc:
 				0xffff => 'VT_ILLEGAL'
 			}
 
+			CLASS_MAP = {
+				# haven't seen one of these. wonder if its same as FILETIME?
+				#'VT_DATE' => ?,
+				'VT_LPSTR' => Lpstr,
+				'VT_LPWSTR' => Lpwstr,
+				'VT_FILETIME' => FileTime,
+				'VT_CLSID' => Clsid
+			}
+
 			module Constants
 				NAMES.each { |num, name| const_set name, num }
+			end
+			
+			def self.load type, str
+				type = NAMES[type] or raise ArgumentError, 'unknown ole type - 0x%04x' % type
+				(CLASS_MAP[type] || Data).load str
+			end
+			
+			def self.dump type, variant
+				type = NAMES[type] or raise ArgumentError, 'unknown ole type - 0x%04x' % type
+				(CLASS_MAP[type] || Data).dump variant
 			end
 		end
 
 		include Variant::Constants
-
-		# the rest of this file is all a bit of adhoc marshal/unmarshal stuff
-
-		# for VT_LPWSTR
-		FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
-		TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
-
-		# for VT_FILETIME
-		EPOCH = DateTime.parse '1601-01-01'
-		# Create a +DateTime+ object from a struct +FILETIME+
-		# (http://msdn2.microsoft.com/en-us/library/ms724284.aspx).
-		#
-		# Converts +str+ to two 32 bit time values, comprising the high and low 32 bits of
-		# the 100's of nanoseconds since 1st january 1601 (Epoch).
-		def self.load_time str
-			low, high = str.unpack 'L2'
-			# we ignore these, without even warning about it
-			return nil if low == 0 and high == 0
-			time = EPOCH + (high * (1 << 32) + low) / 1e7 / 86400 rescue return
-			# extra sanity check...
-			unless (1800...2100) === time.year
-				Log.warn "ignoring unlikely time value #{time.to_s}"
-				return nil
-			end
-			time
-		end
-
-		# +time+ should be able to be either a Time, Date, or DateTime.
-		def self.save_time time
-			# i think i'll convert whatever i get to be a datetime, because of
-			# the covered range.
-			return 0.chr * 8 unless time
-			time = time.send(:to_datetime) if Time === time
-			bignum = ((time - Ole::Types::EPOCH) * 86400 * 1e7.to_i)
-			high, low = bignum.divmod 1 << 32
-			[low, high].pack 'L2'
-		end
-
-		# for VT_CLSID
-		# Convert a binary guid into a plain string (will move to proper class later).
-		def self.load_guid str
-			"{%08x-%04x-%04x-%02x%02x-#{'%02x' * 6}}" % str.unpack('L S S CC C6')
-		end
 	end
 end
 

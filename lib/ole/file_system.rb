@@ -29,8 +29,8 @@
 #
 # TODO
 # 
-# - check for all new_child calls. eg Dir.mkdir, and File.open, and also
-#   File.rename, to add in filename length checks (max 32 / 31 or something).
+# - check Dir.mkdir, and File.open, and File.rename, to add in filename 
+#   length checks (max 32 / 31 or something).
 #   do the automatic truncation, and add in any necessary warnings.
 #
 # - File.split('a/') == File.split('a') == ['.', 'a']
@@ -130,6 +130,8 @@ module Ole # :nodoc:
 				path = "#{pwd}/#{path}" unless path =~ /^\//
 				# at this point its already absolute. we use File.expand_path
 				# just for the .. and . handling
+				# Hmmm, FIXME: won't work on windows i think. on windows it will prepend
+				# the current drive i believe. may just need to strip the first 2 chars.
 				File.expand_path path
 			end
 
@@ -169,8 +171,7 @@ module Ole # :nodoc:
 						# a get_parent_dirent function.
 						parent_path, basename = File.split expand_path(path)
 						parent = @ole.dir.send :dirent_from_path, parent_path, path
-						dirent = parent.new_child :file
-						dirent.name = basename
+						parent.children << dirent = Dirent.new(@ole, :type => :file, :name => basename)
 					end
 				else
 					dirent = dirent_from_path path
@@ -351,7 +352,7 @@ module Ole # :nodoc:
 				# now, we first should ensure that it doesn't already exist
 				# either as a file or a directory.
 				raise Errno::EEXIST, path if parent/basename
-				parent.new_child(:dir) { |child| child.name = basename }
+				parent.children << Dirent.new(@ole, :type => :dir, :name => basename)
 				0
 			end
 

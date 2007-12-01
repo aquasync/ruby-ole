@@ -6,6 +6,7 @@ require 'test/unit'
 require 'ole/storage'
 require 'digest/sha1'
 require 'stringio'
+require 'tempfile'
 
 #
 # = TODO
@@ -88,7 +89,10 @@ class TestStorageWrite < Test::Unit::TestCase
 		io = StringIO.open File.read("#{TEST_DIR}/test_word_6.doc")
 		assert_equal '9974e354def8471225f548f82b8d81c701221af7', sha1(io.string)
 		Ole::Storage.open(io, :update_timestamps => false) { }
-		assert_equal 'efa8cfaf833b30b1d1d9381771ddaafdfc95305c', sha1(io.string)
+		# hash changed. used to be efa8cfaf833b30b1d1d9381771ddaafdfc95305c
+		# thats because i know truncate the io, and am probably removing some trailing allocated
+		# available blocks.
+		assert_equal 'a39e3c4041b8a893c753d50793af8d21ca8f0a86', sha1(io.string)
 		# add a repack test here
 		Ole::Storage.open io, :update_timestamps => false, &:repack
 		assert_equal 'c8bb9ccacf0aaad33677e1b2a661ee6e66a48b5a', sha1(io.string)

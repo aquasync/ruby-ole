@@ -3,9 +3,13 @@
 * finish fleshing out tests - 100% coverage (currently 95%).
 * add mbat support as part of that.
 * audit unpack strings to fix endianness issues.
+* fix mode strings - like truncate when using 'w+', supporting append
+  'a+' modes etc.
+
+* more RangesIO completion. ie, doesn't support #<< at the moment.
 
 * ability to inhibit update of timestamps (bool, off by default)
-  this will fix currently broken tests relying on md5 hashes.
+  this will fix currently broken tests relying on md5 hashes. (done)
 * ability to zero out padding and unused blocks
 * add the property set and enhanced variant types support
 
@@ -13,3 +17,15 @@
 
 * supposedly vba does something weird to ole files. test that.
 * properly credit all external sources.
+
+idea for fixing mode string stuff. use mode string class to make this work:
+
+	Ole::Storage.open('file.doc', 'rb') { |ole| ... } # standard for read
+	Ole::Storage.open('file.doc', 'rb+') { |ole| ... } # standard for write
+	Ole::Storage.open('file.doc', 'r') { |ole| ... } # warns due to lack of binary
+	Ole::Storage.open('file.doc', 'wb') { |ole| ... } # warns due to lack of read. need to read for bat migration, even if only writing
+
+	and further, extend it to RangesIO, such that it automatically calls truncate
+	for 'w' modes, automatically seeks for 'a' modes, etc etc. as for binary, it
+	will be ignored.
+

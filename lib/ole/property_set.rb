@@ -1,37 +1,33 @@
 
 module Ole
 	module Types
-		# should have a list of the VT_* variant types, and have all the serialization related code
-		# here... implement dump & load functions like marshalling
-		class Guid
-			SIZE = 16
-
-			def self.load str
-				Types.load_guid str
-			end
-		end
-
 		# see http://poi.apache.org/hpsf/internals.html
 		class PropertySet
 			HEADER_SIZE = 28
-			HEADER_UNPACK = "vvVa#{Guid::SIZE}V"
+			HEADER_UNPACK = "vvVa#{Clsid::SIZE}V"
 			OS_MAP = {
 				0 => :win16,
 				1 => :mac,
 				2 => :win32
 			}
 
+			# define a smattering of the property set guids. 
+			FMTID_SummaryInformation		= Clsid.parse '{f29f85e0-4ff9-1068-ab91-08002b27b3d9}'
+			FMTID_DocSummaryInformation	= Clsid.parse '{d5cdd502-2e9c-101b-9397-08002b2cf9ae}'
+			FMTID_UserDefinedProperties	= Clsid.parse '{d5cdd505-2e9c-101b-9397-08002b2cf9ae}'
+
 			class Section < Struct.new(:guid, :offset)
+				include Variant::Constants
 				include Enumerable
 
-				SIZE = Guid::SIZE + 4
-				UNPACK_STR = "a#{Guid::SIZE}v"
+				SIZE = Clsid::SIZE + 4
+				UNPACK_STR = "a#{Clsid::SIZE}v"
 
 				attr_reader :length
 				def initialize str, property_set
 					@property_set = property_set
 					super(*str.unpack(UNPACK_STR))
-					self.guid = Guid.load guid
+					self.guid = Clsid.load guid
 					load_header
 				end
 
@@ -49,14 +45,20 @@ module Ole
 					io.read(length * 8).scan(/.{8}/m).each do |str|
 						id, property_offset = str.unpack 'V2'
 						io.seek offset + property_offset
-						type = io.read(4).unpack('V')[0]
-						yield id, type, io.read(10)
+						type, value = io.read(8).unpack('V2')
+						# is the method of serialization here custom?
+						case type
+						when VT_LPSTR, VT_LPWSTR
+							value = Variant.load type, io.read(value)
+						# ....
+						end
+						yield id, type, value
 					end
 					self
 				end
 
 				def properties
-					to_a
+					to_enum.to_a
 				end
 			end
 
@@ -72,7 +74,7 @@ module Ole
 			def load_header str
 				@signature, @unknown, @os_id, @guid, @num_sections = str.unpack HEADER_UNPACK
 				# should i check that unknown == 0? it usually is. so is the guid actually
-				@guid = Guid.load @guid
+				@guid = Clsid.load @guid
 				@os = OS_MAP[@os_id] || Log.warn("unknown operating system id #{@os_id}")
 			end
 

@@ -1,7 +1,5 @@
 #! /usr/bin/ruby -w
 
-$: << File.dirname(__FILE__) + '/..'
-
 require 'tempfile'
 
 require 'ole/base'
@@ -15,11 +13,6 @@ module Ole # :nodoc:
 	# <tt>Ole::Storage</tt> is a class intended to abstract away details of the
 	# access to OLE2 structured storage files, such as those produced by
 	# Microsoft Office, eg *.doc, *.msg etc.
-	#
-	# Initially based on chicago's libole, source available at
-	# http://prdownloads.sf.net/chicago/ole.tgz
-	# Later augmented with some corrections by inspecting pole, and (purely
-	# for header definitions) gsf.
 	#
 	# = Usage
 	#
@@ -49,14 +42,27 @@ module Ole # :nodoc:
 	#   ole.root["\001CompObj"].open { |f| f.write "blah blah" }
 	#   ole.close
 	#
+	# = Thanks
+	#
+	# * The code contained in this project was initially based on chicago's libole
+	#   (source available at http://prdownloads.sf.net/chicago/ole.tgz).
+	#
+	# * It was later augmented with some corrections by inspecting pole, and (purely
+	#   for header definitions) gsf.
+	#
+	# * The property set parsing code came from the apache java project POIFS.
+	#
+	# * The excellent idea for using a pseudo file system style interface by providing
+	#   #file and #dir methods which mimic File and Dir, was borrowed (along with almost
+	#   unchanged tests!) from the Thomas Sondergaard's rubyzip.
+	#
 	# = TODO
 	#
 	# * the custom header cruft for Header and Dirent needs some love.
 	# * i have a number of classes doing load/save combos: Header, AllocationTable, Dirent,
 	#   and, in a manner of speaking, but arguably different, Storage itself.
-	#   they have differing api's which would be nice to clean.
+	#   they have differing api's which would be nice to rethink.
 	#   AllocationTable::Big must be created aot now, as it is used for all subsequent reads.
-	# * need to fix META_BAT support in #flush.
 	#
 	class Storage
 		# thrown for any bogus OLE file errors.
@@ -117,6 +123,18 @@ module Ole # :nodoc:
 		end
 
 		# load document from file.
+		#
+		# TODO: implement various allocationtable checks, maybe as a AllocationTable#fsck function :)
+		#
+		# 1. reterminate any chain not ending in EOC.
+		#    compare file size with actually allocated blocks per file.
+		# 2. pass through all chain heads looking for collisions, and making sure nothing points to them
+		#    (ie they are really heads). in both sbat and mbat
+		# 3. we know the locations of the bbat data, and mbat data. ensure that there are placeholder blocks
+		#    in the bat for them.
+		# 4. maybe a check of excess data. if there is data outside the bbat.truncate.length + 1 * block_size,
+		#    (eg what is used for truncate in #flush), then maybe add some sort of message about that. it
+		#    will be automatically thrown away at close time.
 		def load
 			# we always read 512 for the header block. if the block size ends up being different,
 			# what happens to the 109 fat entries. are there more/less entries?
@@ -170,25 +188,16 @@ module Ole # :nodoc:
 			@io.close if @close_parent
 		end
 
-		# should have a #open_dirent i think. and use it in load and flush. neater.
-		# also was thinking about Dirent#open_padding. then i can more easily clean up the padding
-		# to be 0.chr
-=begin
-thoughts on fixes:
-1. reterminate any chain not ending in EOC. 
-2. pass through all chain heads looking for collisions, and making sure nothing points to them
-   (ie they are really heads).
-3. we know the locations of the bbat data, and mbat data. ensure that there are placeholder blocks
-   in the bat for them.
-this stuff will ensure reliability of input better. otherwise, its actually worth doing a repack
-directly after read, to ensure the above is probably acounted for, before subsequent writes possibly
-destroy things.
-=end
-
 		# the flush method is the main "save" method. all file contents are always
 		# written directly to the file by the RangesIO objects, all this method does
 		# is write out all the file meta data - dirents, allocation tables, file header
 		# etc.
+		#
+		# maybe add an option to zero the padding, and any remaining avail blocks in the
+		# allocation table.
+		#
+		# TODO: long and overly complex. simplify and test better. eg, perhaps move serialization
+		# of bbat to AllocationTable::Big. 
 		def flush
 			# update root dirent, and flatten dirent tree
 			@root.name = 'Root Entry'
@@ -224,50 +233,81 @@ destroy things.
 				b == AllocationTable::BAT || b == AllocationTable::META_BAT ?
 					AllocationTable::AVAIL : b
 			end
-			io = RangesIOResizeable.new @bbat, AllocationTable::EOC
 	
 			# currently we use a loop. this could be better, but basically,
 			# the act of writing out the bat, itself requires blocks which get
 			# recorded in the bat.
+			#
+			# i'm sure that there'd be some simpler closed form solution to this. solve
+			# recursive func:
+			#
+			#   num_mbat_blocks = ceil(max((mbat_len - 109) * 4 / block_size, 0))
+			#   bbat_len = initial_bbat_len + num_mbat_blocks
+			#   mbat_len = ceil(bbat_len * 4 / block_size)
+			#
+			# the actual bbat allocation table is itself stored throughout the file, and that chain
+			# is stored in the initial blocks, and the mbat blocks.
+			num_mbat_blocks = 0
+			io = RangesIOResizeable.new @bbat, AllocationTable::EOC
+			# truncate now, so that we can simplify size calcs - the mbat blocks will be appended in a
+			# contiguous chunk at the end.
+			# hmmm, i think this truncate should be matched with a truncate of the underlying io. if you
+			# delete a lot of stuff, and free up trailing blocks, the file size never shrinks. this can
+			# be fixed easily, add an io truncate
+			@bbat.truncate!
+			before = @io.size
+			@io.truncate @bbat.block_size * (@bbat.length + 1)
 			while true
-				bbat_data = @bbat.to_s
-				mbat_chain = @bbat.chain io.first_block
-				raise NotImplementedError, "don't handle writing out extra META_BAT blocks yet" if mbat_chain.length > 109
-				# so we can ignore meta blocks in this calculation:
-				break if io.size >= bbat_data.length # it shouldn't be bigger right?
-				# this may grow the bbat, depending on existing available blocks
-				io.truncate bbat_data.length
+				# get total bbat size. equivalent to @bbat.to_s.length, but for the factoring in of
+				# the mbat blocks. we can't just add the mbat blocks directly to the bbat, as as this iteration
+				# progresses, more blocks may be needed for the bat itself (if there are no more gaps), and the
+				# mbat must remain contiguous.
+				bbat_data_len = ((@bbat.length + num_mbat_blocks) * 4 / @bbat.block_size.to_f).ceil * @bbat.block_size
+				# now storing the excess mbat blocks also increases the size of the bbat:
+				new_num_mbat_blocks = ([bbat_data_len / @bbat.block_size - 109, 0].max * 4 / @bbat.block_size.to_f).ceil
+				if new_num_mbat_blocks != num_mbat_blocks
+					# need more space for the mbat.
+					num_mbat_blocks = new_num_mbat_blocks
+				elsif io.size != bbat_data_len
+					# need more space for the bat
+					# this may grow the bbat, depending on existing available blocks
+					io.truncate bbat_data_len
+				else
+					break
+				end
 			end
 
 			# now extract the info we want:
 			ranges = io.ranges
-			mbat_chain = @bbat.chain io.first_block
+			bbat_chain = @bbat.chain io.first_block
+			# the extra mbat data is a set of contiguous blocks at the end
 			io.close
-			mbat_chain.each { |b| @bbat[b] = AllocationTable::BAT }
-			@header.num_bat = mbat_chain.length
+			bbat_chain.each { |b| @bbat[b] = AllocationTable::BAT }
+			# tack on the mbat stuff
+			@header.mbat_start = @bbat.length # need to record this here before tacking on the mbat
+			@header.num_bat = bbat_chain.length
+			num_mbat_blocks.times { @bbat << AllocationTable::META_BAT }
 
 			# now finally write the bbat, using a not resizable io.
 			RangesIO.open(@io, ranges) { |io| io.write @bbat.to_s }
 
-			# this is the mbat
-			mbat_chain += [AllocationTable::AVAIL] * (109 - mbat_chain.length)
-			@header.mbat_start = AllocationTable::EOC
-			@header.num_mbat = 0
-
-=begin
-			# now that spanned a number of blocks:
-			mbat = (0...@header.num_bat).map { |i| i + base }
-			mbat += [AllocationTable::AVAIL] * (109 - mbat.length) if mbat.length < 109
-			header_mbat = mbat[0...109]
-			other_mbat_data = mbat[109..-1].pack 'L*'
-			@header.mbat_start = base + @header.num_bat
-			@header.num_mbat = (other_mbat_data.length / new_bbat.block_size.to_f).ceil
-			io.write other_mbat_data
-=end
+			# this is the mbat. pad it out.
+			bbat_chain += [AllocationTable::AVAIL] * [109 - bbat_chain.length, 0].max
+			@header.num_mbat = num_mbat_blocks
+			if num_mbat_blocks == 0
+				@header.mbat_start = AllocationTable::EOC
+			else
+				# write out the mbat blocks now. first of all, where are they going to be?
+				mbat_data = bbat_chain[109..-1]
+				q = @bbat.block_size / 4
+				mbat_data += [AllocationTable::AVAIL] *((mbat_data.length / q.to_f).ceil * q - mbat_data.length)
+				ranges = @bbat.ranges((0...num_mbat_blocks).map { |i| @header.mbat_start + i })
+				RangesIO.open(@io, ranges) { |io| io.write mbat_data.pack('L*') }
+			end
 
 			# now seek back and write the header out
 			@io.seek 0
-			@io.write @header.to_s + mbat_chain.pack('L*')
+			@io.write @header.to_s + bbat_chain[0, 109].pack('L*')
 			@io.flush
 		end
 
@@ -287,9 +327,10 @@ destroy things.
 		end
 
 		# could be useful with mis-behaving ole documents. or to just clean them up.
+		# FIXME: heard Tempfile is not binary on windows. check
 		def repack temp=:file
 			case temp
-			when :file; Tempfile.open 'w+', &method(:repack_using_io)
+			when :file; Tempfile.open 'ole-repack', &method(:repack_using_io)
 			when :mem;  StringIO.open(&method(:repack_using_io))
 			else raise ArgumentError, "unknown temp backing #{temp.inspect}"
 			end
@@ -426,6 +467,10 @@ destroy things.
 				temp = reverse
 				not_avail = temp.find { |b| b != AVAIL } and temp = temp[temp.index(not_avail)..-1]
 				temp.reverse
+			end
+
+			def truncate!
+				replace truncate
 			end
 
 			def to_s
@@ -699,7 +744,7 @@ destroy things.
 				super(*values)
 
 				# extra parsing from the actual struct values
-				@name = opts[:name] || Types::FROM_UTF16.iconv(name_utf16[0...name_len].sub(/\x00\x00$/, ''))
+				@name = opts[:name] || Types::Variant.load(Types::VT_LPWSTR, name_utf16[0...name_len].sub(/\x00\x00$/, ''))
 				@type = if opts[:type]
 					unless TYPE_MAP.values.include?(opts[:type])
 						raise ArgumentError, "unknown type #{opts[:type].inspect}"
@@ -714,8 +759,8 @@ destroy things.
 					default_time = @ole.opts[:update_timestamps] ? Time.now : nil
 					@create_time ||= default_time
 					@modify_time ||= default_time
-					@create_time = Types.load_time(create_time_str) if create_time_str
-					@modify_time = Types.load_time(create_time_str) if modify_time_str
+					@create_time = Types::Variant.load(Types::VT_FILETIME, create_time_str) if create_time_str
+					@modify_time = Types::Variant.load(Types::VT_FILETIME, create_time_str) if modify_time_str
 					@children = nil
 				else
 					@create_time = nil
@@ -736,8 +781,11 @@ destroy things.
 				# i need to do 'a' etc.
 				case mode
 				when 'r', 'r+'
-					# as i don't enforce reading/writing, nothing changes here
+					# as i don't enforce reading/writing, nothing changes here. kind of
+					# need to enforce tt if i want modify times to work better.
+					@modify_time = Time.now if mode == 'r+'
 				when 'w'
+					@modify_time = Time.now
 					io.truncate 0
 				else
 					raise NotImplementedError, "unsupported mode - #{mode.inspect}"
@@ -763,6 +811,7 @@ destroy things.
 				!file?
 			end
 
+			# maybe need some options regarding case sensitivity.
 			def / name
 				children.find { |child| name === child.name }
 			end
@@ -813,7 +862,7 @@ destroy things.
 			end
 
 			def to_s
-				tmp = Types::TO_UTF16.iconv(name)
+				tmp = Types::Variant.dump(Types::VT_LPWSTR, name)
 				tmp = tmp[0, 62] if tmp.length > 62
 				tmp += 0.chr * 2
 				self.name_len = tmp.length
@@ -824,9 +873,12 @@ destroy things.
 				# note not dir?, so as not to override root's first_block
 				self.first_block = Dirent::EOT if type == :dir
 				if file?
+					# this is messed up. it changes the time stamps regardless of whether the file
+					# was actually touched. instead, any open call with a writeable mode, should update
+					# the modify time. create time would be set in new.
 					if @ole.opts[:update_timestamps]
-						self.create_time_str = Types.save_time @create_time
-						self.modify_time_str = Types.save_time Time.now
+						self.create_time_str = Types::Variant.dump Types::VT_FILETIME, @create_time
+						self.modify_time_str = Types::Variant.dump Types::VT_FILETIME, @modify_time
 					end
 				else
 					self.create_time_str = 0.chr * 8
@@ -850,16 +902,6 @@ destroy things.
 				str + '>'
 			end
 
-			# --------
-			# and for creation of a dirent. don't like the name. is it a file or a directory?
-			# assign to type later? io will be empty.
-			def new_child type
-				child = Dirent.new ole, :type => type
-				children << child
-				yield child if block_given?
-				child
-			end
-
 			def delete child
 				# remove from our child array, so that on reflatten and re-creation of @dirents, it will be gone
 				raise ArgumentError, "#{child.inspect} not a child of #{self.inspect}" unless @children.delete child
@@ -874,7 +916,9 @@ destroy things.
 				dst.name = src.name
 				if src.dir?
 					src.children.each do |src_child|
-						dst.new_child(src_child.type) { |dst_child| Dirent.copy src_child, dst_child }
+						dst_child = Dirent.new dst.ole, :type => src_child.type
+						dst.children << dst_child
+						Dirent.copy src_child, dst_child
 					end
 				else
 					src.open do |src_io|
@@ -885,4 +929,3 @@ destroy things.
 		end
 	end
 end
-

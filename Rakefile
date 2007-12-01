@@ -55,7 +55,7 @@ spec = Gem::Specification.new do |s|
 	s.executables = ['oletool']
 	s.files  = ['Rakefile']
 	s.files += Dir.glob("lib/**/*.rb")
-	s.files += Dir.glob("test/test_*.rb") + Dir.glob("test/*.doc")
+	s.files += FileList["test/test_*.rb", "test/*.doc", "test/oleWithDirs.ole"]
 	s.files += Dir.glob("bin/*")
 
 	s.has_rdoc = true
