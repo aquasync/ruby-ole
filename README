@@ -1,17 +1,16 @@
 = TODO
 
 * finish fleshing out tests - 100% coverage (currently 95%).
-* add mbat support as part of that.
+  in particular - no propertyset tests yet.
+  also make property sets easier to use, adding in some smarts about the
+  prop ids, and naming the properties in known sections.
 * audit unpack strings to fix endianness issues.
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc.
 
 * more RangesIO completion. ie, doesn't support #<< at the moment.
 
-* ability to inhibit update of timestamps (bool, off by default)
-  this will fix currently broken tests relying on md5 hashes. (done)
 * ability to zero out padding and unused blocks
-* add the property set and enhanced variant types support
 
 * more benchmarking, profiling, and speed fixes.
 

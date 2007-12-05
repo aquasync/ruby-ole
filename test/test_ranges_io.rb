@@ -12,7 +12,7 @@ class TestRangesIO < Test::Unit::TestCase
 	def setup
 		# read from ourself, also using overlaps.
 		ranges = [100..200, 0..10, 100..150]
-		@io = RangesIO.new open("#{TEST_DIR}/test_ranges_io.rb"), ranges, :close_parent => true
+		@io = RangesIO.new open("#{TEST_DIR}/test_ranges_io.rb"), :ranges => ranges, :close_parent => true
 	end
 
 	def teardown
@@ -23,9 +23,9 @@ class TestRangesIO < Test::Unit::TestCase
 		# block form
 		f = open("#{TEST_DIR}/test_ranges_io.rb")
 		assert_equal false, f.closed?
-		RangesIO.open f, []
+		RangesIO.open f, :ranges => []
 		assert_equal false, f.closed?
-		RangesIO.open(f, [], :close_parent => true) {}
+		RangesIO.open(f, :ranges => [], :close_parent => true) {}
 		assert_equal true, f.closed?
 	end
 
@@ -81,7 +81,7 @@ class TestRangesIO < Test::Unit::TestCase
 
 	def test_write
 		str = File.read "#{TEST_DIR}/test_ranges_io.rb"
-		@io = RangesIO.new StringIO.new(str), @io.ranges
+		@io = RangesIO.new StringIO.new(str), :ranges => @io.ranges
 		assert_equal "io'\nrequir", str[100, 10]
 		@io.write 'testing testing'
 		assert_equal 'testing te', str[100, 10]

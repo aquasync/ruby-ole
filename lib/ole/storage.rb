@@ -69,7 +69,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.2'
+		VERSION = '1.2.3'
 
 		# options used at creation time
 		attr_reader :opts
@@ -289,7 +289,7 @@ module Ole # :nodoc:
 			num_mbat_blocks.times { @bbat << AllocationTable::META_BAT }
 
 			# now finally write the bbat, using a not resizable io.
-			RangesIO.open(@io, ranges) { |io| io.write @bbat.to_s }
+			RangesIO.open(@io, :ranges => ranges) { |io| io.write @bbat.to_s }
 
 			# this is the mbat. pad it out.
 			bbat_chain += [AllocationTable::AVAIL] * [109 - bbat_chain.length, 0].max
@@ -302,7 +302,7 @@ module Ole # :nodoc:
 				q = @bbat.block_size / 4
 				mbat_data += [AllocationTable::AVAIL] *((mbat_data.length / q.to_f).ceil * q - mbat_data.length)
 				ranges = @bbat.ranges((0...num_mbat_blocks).map { |i| @header.mbat_start + i })
-				RangesIO.open(@io, ranges) { |io| io.write mbat_data.pack('L*') }
+				RangesIO.open(@io, :ranges => ranges) { |io| io.write mbat_data.pack('L*') }
 			end
 
 			# now seek back and write the header out
@@ -519,7 +519,7 @@ module Ole # :nodoc:
 			# quick shortcut. chain can be either a head (in which case the table is used to
 			# turn it into a chain), or a chain. it is converted to ranges, then to rangesio.
 			def open chain, size=nil, &block
-				RangesIO.open @io, ranges(chain, size), &block
+				RangesIO.open @io, :ranges => ranges(chain, size), &block
 			end
 
 			def read chain, size=nil
@@ -616,7 +616,7 @@ module Ole # :nodoc:
 				self.first_block = first_block
 				# we know cache the blocks chain, for faster resizing.
 				@blocks = @bat.chain first_block
-				super @bat.io, @bat.ranges(@blocks, size)
+				super @bat.io, :ranges => @bat.ranges(@blocks, size)
 			end
 
 			def truncate size
@@ -642,9 +642,12 @@ module Ole # :nodoc:
 		# between bats based on size, and updating the dirent.
 		class RangesIOMigrateable < RangesIOResizeable
 			attr_reader :dirent
-			def initialize dirent
+			def initialize dirent, mode='r'
 				@dirent = dirent
 				super @dirent.ole.bat_for_size(@dirent.size), @dirent.first_block, @dirent.size
+				# FIXME - need to fix propagation of arguments
+				@mode = IO::Mode.new mode
+				truncate 0 if @mode.truncate?
 			end
 
 			def truncate size
@@ -772,7 +775,7 @@ module Ole # :nodoc:
 
 			def open mode='r'
 				raise Errno::EISDIR unless file?
-				io = RangesIOMigrateable.new self
+				io = RangesIOMigrateable.new self, mode
 				# TODO work on the mode string stuff a bit more.
 				# maybe let the io object know about the mode, so it can refuse
 				# to work for read/write appropriately. maybe redefine all unusable
@@ -786,7 +789,7 @@ module Ole # :nodoc:
 					@modify_time = Time.now if mode == 'r+'
 				when 'w'
 					@modify_time = Time.now
-					io.truncate 0
+					#io.truncate 0
 				else
 					raise NotImplementedError, "unsupported mode - #{mode.inspect}"
 				end

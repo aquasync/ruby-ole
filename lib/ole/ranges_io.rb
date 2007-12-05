@@ -1,34 +1,78 @@
-class IOModeString
-	def initialize mode='r'
-		@mode = mode
-		if @mode['b']
-			@binary = true
-			@mode = @mode.sub 'b', ''
-		else
-			@binary = false
+
+class IO
+  BINARY = 0x4 unless defined?(BINARY)
+
+	# nabbed from rubinius, and modified
+  def self.parse_mode mode
+    ret = 0
+
+    case mode[0]
+    when ?r; ret |= RDONLY
+    when ?w; ret |= WRONLY | CREAT | TRUNC
+    when ?a; ret |= WRONLY | CREAT | APPEND
+    else raise ArgumentError, "illegal access mode #{mode}"
+    end
+
+		(1...mode.length).each do |i|
+			case mode[i]
+			when ?+; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
+			when ?b; ret |= BINARY
+		  else raise ArgumentError, "illegal access mode #{mode}"
+			end
 		end
-		if @mode[/\+$/]
-			@plus = true
-			@mode = @mode.sub(/\+$/, '')
-		else
-			@plus = false
+  
+		ret
+  end
+
+	class Mode
+		NAMES = %w[rdonly wronly rdwr creat trunc append binary]
+
+		attr_reader :flags
+		def initialize flags
+			flags = IO.parse_mode flags.to_str if flags.respond_to? :to_str
+			raise ArgumentError, "invalid flags - #{flags.inspect}" unless Fixnum === flags
+			@flags = flags
 		end
-	end
 
-	def explicit_binary?
-		@binary
-	end
+		def writeable?
+			#(@flags & IO::RDONLY) == 0
+			(@flags & 0x3) != IO::RDONLY
+		end
 
-	def binary?
-		RUBY_PLATFORM !~ /win/ or @binary
-	end
+		def readable?
+			(@flags & IO::WRONLY) == 0
+		end
 
-	def to_s
-		@mode
-	end
+		def truncate?
+			(@flags & IO::TRUNC) != 0
+		end
 
-	def inspect
-		"#<#{self.class}:#{to_s.inspect}>"
+		def append?
+			(@flags & IO::APPEND) != 0
+		end
+
+		def create?
+			(@flags & IO::CREAT) != 0
+		end
+
+		def binary?
+			(@flags & IO::BINARY) != 0
+		end
+
+		# revisit this
+		def apply io
+			if truncate?
+				io.truncate 0
+			elsif append?
+				io.seek IO::SEEK_END, 0
+			end
+		end
+
+		def inspect
+			names = NAMES.map { |name| name if (flags & IO.const_get(name.upcase)) != 0 }
+			names.unshift 'rdonly' if (flags & 0x3) == 0
+			"#<#{self.class} #{names.compact * '|'}>"
+		end
 	end
 end
 
@@ -71,24 +115,34 @@ end
 # This class isn't ole specific, maybe move it to my general ruby stream project.
 # 
 class RangesIO
-	attr_reader :io, :ranges, :size, :pos
+	attr_reader :io, :mode, :ranges, :size, :pos
 	# +io+:: the parent io object that we are wrapping.
-	# 
-	# +ranges+:: byte offsets, either:
-	# 1. an array of ranges [1..2, 4..5, 6..8] or
-	# 2. an array of arrays, where the second is length [[1, 1], [4, 1], [6, 2]] for the above
-	#    (think the way String indexing works)
+	# +mode+:: the mode to use
+	# +params+:: hash of params.
+	# * :ranges - byte offsets, either:
+	#   1. an array of ranges [1..2, 4..5, 6..8] or
+	#   2. an array of arrays, where the second is length [[1, 1], [4, 1], [6, 2]] for the above
+	#      (think the way String indexing works)
+	# * :close_parent - boolean to close parent when this object is closed
 	#
 	# NOTE: the +ranges+ can overlap.
-	def initialize io, ranges, opts={}
-		@opts = {:close_parent => false}.merge opts
+	def initialize io, mode='r', params={}
+		mode, params = 'r', mode if Hash === mode
+		ranges = params[:ranges]
+		@params = {:close_parent => false}.merge params
+		@mode = IO::Mode.new mode
 		@io = io
 		# convert ranges to arrays. check for negative ranges?
+		ranges ||= [0, io.size]
 		@ranges = ranges.map { |r| Range === r ? [r.begin, r.end - r.begin] : r }
 		# calculate size
 		@size = @ranges.inject(0) { |total, (pos, len)| total + len }
 		# initial position in the file
 		@pos = 0
+
+		# handle some mode flags
+		truncate 0 if @mode.truncate?
+		seek size if @mode.append?
 	end
 
 	# add block form. TODO add test for this
@@ -120,7 +174,7 @@ class RangesIO
 	alias tell :pos
 
 	def close
-		@io.close if @opts[:close_parent]
+		@io.close if @params[:close_parent]
 	end
 
 	# returns the [+offset+, +size+], pair inorder to read/write at +pos+
@@ -169,8 +223,7 @@ class RangesIO
 		data
 	end
 
-	# you may override this call to update @ranges and @size, if applicable. then write
-	# support can grow below
+	# you may override this call to update @ranges and @size, if applicable.
 	def truncate size
 		raise NotImplementedError, 'truncate not supported'
 	end
@@ -229,6 +282,18 @@ class RangesIO
 		range_str = pos ? "#{pos}..#{pos+len}" : 'nil'
 		"#<#{self.class} io=#{io.inspect}, size=#@size, pos=#@pos, "\
 			"range=#{range_str}>"
+	end
+end
+
+# this subclass of ranges io explicitly ignores the truncate part of 'w' modes.
+# only really needed for the allocation table writes etc. maybe just use explicit modes
+# for those
+# better yet write a test that breaks before I fix it.
+class RangesIONonResizeable < RangesIO
+	def initialize io, mode='r', params={}
+		mode, params = 'r', mode if Hash === mode
+		flags = IO::Flags.new(mode).flags & ~IO::TRUNC
+		super io, flags, params
 	end
 end
 

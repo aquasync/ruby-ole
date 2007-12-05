@@ -1,7 +1,16 @@
+require 'ole/types'
 
 module Ole
 	module Types
-		# see http://poi.apache.org/hpsf/internals.html
+		#
+		# The PropertySet class currently supports readonly access to the properties
+		# serialized in "property set" streams, such as the file "\005SummaryInformation",
+		# in OLE files.
+		#
+		# Think has its roots in MFC property set serialization.
+		#
+		# See http://poi.apache.org/hpsf/internals.html for details
+		#
 		class PropertySet
 			HEADER_SIZE = 28
 			HEADER_UNPACK = "vvVa#{Clsid::SIZE}V"
@@ -68,7 +77,7 @@ module Ole
 				load_header io.read(HEADER_SIZE)
 				load_section_list io.read(@num_sections * Section::SIZE)
 				# expect no gap between last section and start of data.
-				Log.warn "gap between section list and property data" unless io.pos == @sections.map(&:offset).min
+				#Log.warn "gap between section list and property data" unless io.pos == @sections.map(&:offset).min
 			end
 
 			def load_header str
