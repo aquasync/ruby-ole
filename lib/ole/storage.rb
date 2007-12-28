@@ -828,7 +828,7 @@ module Ole # :nodoc:
 
 			def [] idx
 				if String === idx
-					warn 'String form of Dirent#[] is deprecated'
+					#warn 'String form of Dirent#[] is deprecated'
 					self / idx
 				else
 					super
@@ -837,7 +837,7 @@ module Ole # :nodoc:
 
 			# move to ruby-msg. and remove from here
 			def time
-				warn 'Dirent#time is deprecated'
+				#warn 'Dirent#time is deprecated'
 				create_time || modify_time
 			end
 

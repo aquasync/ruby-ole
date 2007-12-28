@@ -214,6 +214,19 @@ module Ole # :nodoc:
 		end
 
 		include Variant::Constants
+		
+		# deprecated aliases, kept mostly for the benefit of ruby-msg, until
+		# i release a new version.
+		def self.load_guid str
+			Variant.load VT_CLSID, str
+		end
+
+		def self.load_time str
+			Variant.load VT_FILETIME, str
+		end
+
+		FROM_UTF16 = Lpwstr::FROM_UTF16
+		TO_UTF16 = Lpwstr::TO_UTF16
 	end
 end
 
