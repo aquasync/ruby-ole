@@ -6,7 +6,7 @@
   - more storage tests
 * make property sets easier to use, adding in some smarts about the
   prop ids, and naming the properties in known sections.
-  see ideas in other file
+  see ideas in other data/propids
 * audit unpack strings to fix endianness issues.
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc.
@@ -20,15 +20,4 @@
 
 * supposedly vba does something weird to ole files. test that.
 * properly credit all external sources.
-
-idea for fixing mode string stuff. use mode string class to make this work:
-
-	Ole::Storage.open('file.doc', 'rb') { |ole| ... } # standard for read
-	Ole::Storage.open('file.doc', 'rb+') { |ole| ... } # standard for write
-	Ole::Storage.open('file.doc', 'r') { |ole| ... } # warns due to lack of binary
-	Ole::Storage.open('file.doc', 'wb') { |ole| ... } # warns due to lack of read. need to read for bat migration, even if only writing
-
-	and further, extend it to RangesIO, such that it automatically calls truncate
-	for 'w' modes, automatically seeks for 'a' modes, etc etc. as for binary, it
-	will be ignored.
 

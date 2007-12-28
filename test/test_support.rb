@@ -55,6 +55,10 @@ class TestIOMode < Test::Unit::TestCase
 		assert_equal true,  mode('r+bbbbb').binary?
 		assert_equal false, mode('r+').binary?
 
+		assert_equal false, mode('r+').create?
+		assert_equal false, mode('r').create?
+		assert_equal true,  mode('wb').create?
+
 		assert_equal true,  mode('w').truncate?
 		assert_equal false, mode('r').truncate?
 		assert_equal false, mode('r+').truncate?
@@ -71,6 +75,12 @@ class TestIOMode < Test::Unit::TestCase
 	def test_invalid
 		assert_raises(ArgumentError) { mode 'rba' }
 		assert_raises(ArgumentError) { mode '+r' }
+	end
+	
+	def test_inspect
+		assert_equal '#<IO::Mode rdonly>', IO::Mode.new('r').inspect
+		assert_equal '#<IO::Mode rdwr|creat|trunc|binary>', IO::Mode.new('wb+').inspect
+		assert_equal '#<IO::Mode wronly|creat|append>', IO::Mode.new('a').inspect
 	end
 end
 

@@ -218,6 +218,7 @@ class IO
 			(@flags & IO::BINARY) != 0
 		end
 
+=begin
 		# revisit this
 		def apply io
 			if truncate?
@@ -226,6 +227,7 @@ class IO
 				io.seek IO::SEEK_END, 0
 			end
 		end
+=end
 
 		def inspect
 			names = NAMES.map { |name| name if (flags & IO.const_get(name.upcase)) != 0 }
