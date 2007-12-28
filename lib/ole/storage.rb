@@ -151,7 +151,7 @@ module Ole # :nodoc:
 			# create an empty bbat.
 			@bbat = AllocationTable::Big.new self
 			mbat_blocks = (0...@header.num_mbat).map { |i| i + @header.mbat_start }
-			bbat_chain = (header_block[Header::SIZE..-1] + @bbat.read(mbat_blocks)).unpack 'L*'
+			bbat_chain = (header_block[Header::SIZE..-1] + @bbat.read(mbat_blocks)).unpack 'V*'
 			# am i using num_bat in the right way?
 			@bbat.load @bbat.read(bbat_chain[0, @header.num_bat])
 	
@@ -372,7 +372,7 @@ module Ole # :nodoc:
 				:reserved, :csectdir, :num_bat, :dirent_start, :transacting_signature, :threshold,
 				:sbat_start, :num_sbat, :mbat_start, :num_mbat
 			)
-			PACK = 'a8 a16 S2 a2 S2 a6 L3 a4 L5'
+			PACK = 'a8 a16 v2 a2 v2 a6 V3 a4 V5'
 			SIZE = 0x4c
 			# i have seen it pointed out that the first 4 bytes of hex,
 			# 0xd0cf11e0, is supposed to spell out docfile. hmmm :)
@@ -462,7 +462,7 @@ module Ole # :nodoc:
 			end
 
 			def load data
-				replace data.unpack('L*')
+				replace data.unpack('V*')
 			end
 
 			def truncate

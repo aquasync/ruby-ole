@@ -50,7 +50,7 @@ module Ole # :nodoc:
 			# Converts +str+ to two 32 bit time values, comprising the high and low 32 bits of
 			# the 100's of nanoseconds since 1st january 1601 (Epoch).
 			def self.load str
-				low, high = str.to_s.unpack 'L2'
+				low, high = str.to_s.unpack 'V2'
 				# we ignore these, without even warning about it
 				return nil if low == 0 and high == 0
 				# switched to rational, and fixed the off by 1 second error i sometimes got.
@@ -85,7 +85,7 @@ module Ole # :nodoc:
 		# helper method for creating a Guid from that readable form (#format).
 		class Clsid < String
 			SIZE = 16
-			UNPACK = 'L S S CC C6'
+			PACK = 'V v v CC C6'
 
 			def self.load str
 				new str.to_s
@@ -103,14 +103,14 @@ module Ole # :nodoc:
 					# this is pretty ugly
 					vals[3] = ('%04x' % vals[3]).scan(/../).map(&:hex)
 					vals[4] = ('%012x' % vals[4]).scan(/../).map(&:hex)
-					guid = new vals.flatten.pack(UNPACK)
+					guid = new vals.flatten.pack(PACK)
 					return guid unless guid.delete('{}') == str.downcase.delete('{}')
 				end
 				raise ArgumentError, 'invalid guid - %p' % str
 			end
 
 			def format
-				"%08x-%04x-%04x-%02x%02x-#{'%02x' * 6}" % unpack(UNPACK)
+				"%08x-%04x-%04x-%02x%02x-#{'%02x' * 6}" % unpack(PACK)
 			end
 			
 			def inspect

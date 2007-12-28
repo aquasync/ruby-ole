@@ -8,7 +8,13 @@
 * make property sets easier to use, adding in some smarts about the
   prop ids, and naming the properties in known sections.
   see ideas in other data/propids
-* audit unpack strings to fix endianness issues.
+  think the way it should work, is that the PropertySet::Section object
+  should have method_missing, which looks up the guid in a name => id mapping,
+  and pulls out the appropriate property id, and returns it. this is a general
+  thing, and will work for all known property set section guids.
+  all that remains then is some OLE document level helper magic to look in
+  the sets, and provide access to the section directly.
+* audit unpack strings to fix endianness issues. done?
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc. done?
 * make ranges io obey readable vs writeable modes.

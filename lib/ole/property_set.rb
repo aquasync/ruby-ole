@@ -13,7 +13,7 @@ module Ole
 		#
 		class PropertySet
 			HEADER_SIZE = 28
-			HEADER_UNPACK = "vvVa#{Clsid::SIZE}V"
+			HEADER_PACK = "vvVa#{Clsid::SIZE}V"
 			OS_MAP = {
 				0 => :win16,
 				1 => :mac,
@@ -30,12 +30,12 @@ module Ole
 				include Enumerable
 
 				SIZE = Clsid::SIZE + 4
-				UNPACK_STR = "a#{Clsid::SIZE}v"
+				PACK = "a#{Clsid::SIZE}v"
 
 				attr_reader :length
 				def initialize str, property_set
 					@property_set = property_set
-					super(*str.unpack(UNPACK_STR))
+					super(*str.unpack(PACK))
 					self.guid = Clsid.load guid
 					load_header
 				end
@@ -81,7 +81,7 @@ module Ole
 			end
 
 			def load_header str
-				@signature, @unknown, @os_id, @guid, @num_sections = str.unpack HEADER_UNPACK
+				@signature, @unknown, @os_id, @guid, @num_sections = str.unpack HEADER_PACK
 				# should i check that unknown == 0? it usually is. so is the guid actually
 				@guid = Clsid.load @guid
 				@os = OS_MAP[@os_id] || Log.warn("unknown operating system id #{@os_id}")
