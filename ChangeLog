@@ -1,0 +1,22 @@
+== 1.2.3 / 2007-12-28
+
+- MBAT write support re-implmented. Can now write files over ~8mb again.
+- Minor fixes (truncation in #flush, file modification timestamps)
+- More test coverage
+- Initial (read-only) property set support.
+- Complete filesystem api, to pass most of the rubyzip tests.
+- Add a ChangeLog :).
+
+== 1.2.2 / 2007-11-05
+
+- Lots of test updates, 90% coverage.
+- Fix +to_tree+ method to be more efficient, and stream output.
+- Optimizations from benchmarks and profiling, mostly for writes. Fixed
+  AllocationTable#resize_chain, RangesIOResizable#truncate and
+  AllocationTable#free_block.
+- Add in filesystem test file from rubyzip, and start working on a
+  filesystem api.
+
+== 1.2.1 / 2007-08-20
+
+- Separate out from ruby-msg as new project.

@@ -1,5 +1,6 @@
 = TODO
 
+* fix this README :)
 * finish fleshing out tests - 100% coverage (currently 96%).
   - ranges io tests
   - file system api tests
@@ -9,15 +10,10 @@
   see ideas in other data/propids
 * audit unpack strings to fix endianness issues.
 * fix mode strings - like truncate when using 'w+', supporting append
-  'a+' modes etc.
+  'a+' modes etc. done?
 * make ranges io obey readable vs writeable modes.
-
 * more RangesIO completion. ie, doesn't support #<< at the moment.
-
 * ability to zero out padding and unused blocks
-
 * more benchmarking, profiling, and speed fixes.
-
 * supposedly vba does something weird to ole files. test that.
-* properly credit all external sources.
 

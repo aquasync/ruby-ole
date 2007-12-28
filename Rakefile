@@ -47,17 +47,18 @@ spec = Gem::Specification.new do |s|
 	s.version = PKG_VERSION
 	s.summary = %q{Ruby OLE library.}
 	s.description = %q{A library for easy read/write access to OLE compound documents for Ruby.}
-	s.authors = ["Charles Lowe"]
+	s.authors = ['Charles Lowe']
 	s.email = %q{aquasync@gmail.com}
 	s.homepage = %q{http://code.google.com/p/ruby-ole}
-	#s.rubyforge_project = %q{ruby-ole}
+	s.rubyforge_project = %q{ruby-ole}
 
 	s.executables = ['oletool']
-	s.files  = ['Rakefile']
-	s.files += Dir.glob("lib/**/*.rb")
-	s.files += FileList["test/test_*.rb", "test/*.doc",
-	                    "test/oleWithDirs.ole", "test/test_SummaryInformation"]
-	s.files += Dir.glob("bin/*")
+	s.files  = ['Rakefile', 'ChangeLog']
+	s.files += FileList['lib/**/*.rb']
+	s.files += FileList['test/test_*.rb', 'test/*.doc']
+	s.files += FileList['test/oleWithDirs.ole', 'test/test_SummaryInformation']
+	s.files += FileList['bin/*']
+	s.test_files = FileList['test/test_*.rb']
 
 	s.has_rdoc = true
 	s.rdoc_options += [
@@ -65,8 +66,6 @@ spec = Gem::Specification.new do |s|
 		'--title', "#{PKG_NAME} documentation",
 		'--tab-width', '2'
 	]
-
-	s.autorequire = 'ole/storage'
 end
 
 Rake::GemPackageTask.new(spec) do |t|

@@ -52,7 +52,7 @@ module Ole # :nodoc:
 	#
 	# * The excellent idea for using a pseudo file system style interface by providing
 	#   #file and #dir methods which mimic File and Dir, was borrowed (along with almost
-	#   unchanged tests!) from the Thomas Sondergaard's rubyzip.
+	#   unchanged tests!) from Thomas Sondergaard's rubyzip.
 	#
 	# = TODO
 	#
@@ -70,7 +70,7 @@ module Ole # :nodoc:
 		VERSION = '1.2.3'
 
 		# options used at creation time
-		attr_reader :opts
+		attr_reader :params
 		# The top of the ole tree structure
 		attr_reader :root
 		# The tree structure in its original flattened form. only valid after #load, or #flush.
@@ -83,10 +83,10 @@ module Ole # :nodoc:
 
 		# maybe include an option hash, and allow :close_parent => true, to be more general.
 		# +arg+ should be either a file, or an +IO+ object, and needs to be seekable.
-		def initialize arg, mode=nil, opts={}
-			opts, mode = mode, nil if Hash === mode
-			opts = {:update_timestamps => true}.merge(opts)
-			@opts = opts
+		def initialize arg, mode=nil, params={}
+			params, mode = mode, nil if Hash === mode
+			params = {:update_timestamps => true}.merge(params)
+			@params = params
 	
 			# get the io object
 			@close_parent, @io = if String === arg
@@ -118,8 +118,8 @@ module Ole # :nodoc:
 			@io.size > 0 ? load : clear
 		end
 
-		def self.open arg, mode=nil, opts={}
-			ole = new arg, mode, opts
+		def self.open arg, mode=nil, params={}
+			ole = new arg, mode, params
 			if block_given?
 				begin   yield ole
 				ensure; ole.close
@@ -346,7 +346,7 @@ module Ole # :nodoc:
 			@io.rewind
 			IO.copy @io, temp_io
 			clear
-			Storage.open temp_io, nil, @opts do |temp_ole|
+			Storage.open temp_io, nil, @params do |temp_ole|
 				#temp_ole.root.type = :dir
 				Dirent.copy temp_ole.root, root
 			end
@@ -747,26 +747,26 @@ module Ole # :nodoc:
 			attr_accessor :children
 			attr_accessor :name
 			attr_reader :ole, :type, :create_time, :modify_time
-			def initialize ole, values=DEFAULT, opts={}
+			def initialize ole, values=DEFAULT, params={}
 				@ole = ole				
-				values, opts = DEFAULT, values if Hash === values
+				values, params = DEFAULT, values if Hash === values
 				values = values.unpack(PACK) if String === values
 				super(*values)
 
 				# extra parsing from the actual struct values
-				@name = opts[:name] || Types::Variant.load(Types::VT_LPWSTR, name_utf16[0...name_len].sub(/\x00\x00$/, ''))
-				@type = if opts[:type]
-					unless TYPE_MAP.values.include?(opts[:type])
-						raise ArgumentError, "unknown type #{opts[:type].inspect}"
+				@name = params[:name] || Types::Variant.load(Types::VT_LPWSTR, name_utf16[0...name_len].sub(/\x00\x00$/, ''))
+				@type = if params[:type]
+					unless TYPE_MAP.values.include?(params[:type])
+						raise ArgumentError, "unknown type #{params[:type].inspect}"
 					end
-					opts[:type]
+					params[:type]
 				else
 					TYPE_MAP[type_id] or raise FormatError, "unknown type_id #{type_id.inspect}"
 				end
 
 				# further extra type specific stuff
 				if file?
-					default_time = @ole.opts[:update_timestamps] ? Time.now : nil
+					default_time = @ole.params[:update_timestamps] ? Time.now : nil
 					@create_time ||= default_time
 					@modify_time ||= default_time
 					@create_time = Types::Variant.load(Types::VT_FILETIME, create_time_str) if create_time_str
@@ -886,7 +886,7 @@ module Ole # :nodoc:
 					# this is messed up. it changes the time stamps regardless of whether the file
 					# was actually touched. instead, any open call with a writeable mode, should update
 					# the modify time. create time would be set in new.
-					if @ole.opts[:update_timestamps]
+					if @ole.params[:update_timestamps]
 						self.create_time_str = Types::Variant.dump Types::VT_FILETIME, @create_time
 						self.modify_time_str = Types::Variant.dump Types::VT_FILETIME, @modify_time
 					end
