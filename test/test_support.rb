@@ -25,7 +25,7 @@ class TestSupport < Test::Unit::TestCase
 		io = StringIO.new
 		log = Logger.new_with_callstack io
 		log.warn 'test'
-		expect = %r{^\[\d\d:\d\d:\d\d \./test/test_support\.rb:\d+:test_logger\]\nWARN   test$}
+		expect = %r{^\[\d\d:\d\d:\d\d .*?test_support\.rb:\d+:test_logger\]\nWARN   test$}
 		assert_match expect, io.string.chomp
 	end
 
@@ -43,6 +43,34 @@ class TestSupport < Test::Unit::TestCase
 		assert_equal [6, 7, 8], str.indexes('|')
 		# note not [6, 7] - no overlaps
 		assert_equal [6], str.indexes('||')
+	end
+end
+
+class TestIOMode < Test::Unit::TestCase
+	def mode s
+		IO::Mode.new s
+	end
+
+	def test_parse
+		assert_equal true,  mode('r+bbbbb').binary?
+		assert_equal false, mode('r+').binary?
+
+		assert_equal true,  mode('w').truncate?
+		assert_equal false, mode('r').truncate?
+		assert_equal false, mode('r+').truncate?
+
+		assert_equal true,  mode('r+').readable?
+		assert_equal true,  mode('r+').writeable?
+		assert_equal false, mode('r').writeable?
+		assert_equal false, mode('w').readable?
+
+		assert_equal true,  mode('a').append?
+		assert_equal false, mode('w+').append?
+	end
+
+	def test_invalid
+		assert_raises(ArgumentError) { mode 'rba' }
+		assert_raises(ArgumentError) { mode '+r' }
 	end
 end
 

@@ -162,8 +162,7 @@ module Ole # :nodoc:
 			end
 
 			def open path, mode='r', &block
-				# FIXME - mode strings are more complex than this.
-				if mode == 'w'
+				if IO::Mode.new(mode).create?
 					begin
 						dirent = dirent_from_path path
 					rescue Errno::ENOENT

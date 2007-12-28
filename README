@@ -1,12 +1,16 @@
 = TODO
 
-* finish fleshing out tests - 100% coverage (currently 95%).
-  in particular - no propertyset tests yet.
-  also make property sets easier to use, adding in some smarts about the
+* finish fleshing out tests - 100% coverage (currently 96%).
+  - ranges io tests
+  - file system api tests
+  - more storage tests
+* make property sets easier to use, adding in some smarts about the
   prop ids, and naming the properties in known sections.
+  see ideas in other file
 * audit unpack strings to fix endianness issues.
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc.
+* make ranges io obey readable vs writeable modes.
 
 * more RangesIO completion. ie, doesn't support #<< at the moment.
 

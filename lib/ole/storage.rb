@@ -1,5 +1,3 @@
-#! /usr/bin/ruby -w
-
 require 'tempfile'
 
 require 'ole/base'
@@ -92,16 +90,24 @@ module Ole # :nodoc:
 	
 			# get the io object
 			@close_parent, @io = if String === arg
-				[true, open(arg, mode || 'rb')]
+				mode ||= 'rb'
+				[true, open(arg, mode)]
 			else
 				raise ArgumentError, 'unable to specify mode string with io object' if mode
 				[false, arg]
 			end
 			# do we have this file opened for writing? don't know of a better way to tell
 			# (unless we parse the mode string in the open case)
+			# hmmm, note that in ruby 1.9 this doesn't work anymore. which is all the more
+			# reason to use mode string parsing when available, and fall back to something like
+			# io.writeable? otherwise.
 			@writeable = begin
-				@io.flush
-				true
+				if mode
+					IO::Mode.new(mode).writeable?
+				else
+					@io.flush
+					true
+				end
 			rescue IOError
 				false
 			end
@@ -177,7 +183,8 @@ module Ole # :nodoc:
 
 			# FIXME i don't currently use @header.num_sbat which i should
 			# hmm. nor do i write it. it means what exactly again?
-			@sb_file = RangesIOResizeable.new @bbat, @root.first_block, @root.size
+			# which mode to use here?
+			@sb_file = RangesIOResizeable.new @bbat, :first_block => @root.first_block, :size => @root.size
 			@sbat = AllocationTable::Small.new self
 			@sbat.load @bbat.read(@header.sbat_start)
 		end
@@ -206,8 +213,7 @@ module Ole # :nodoc:
 			@dirents = @root.flatten
 
 			# serialize the dirents using the bbat
-			RangesIOResizeable.open @bbat, @header.dirent_start do |io|
-				io.truncate 0
+			RangesIOResizeable.open @bbat, 'w', :first_block => @header.dirent_start do |io|
 				@dirents.each { |dirent| io.write dirent.to_s }
 				padding = (io.size / @bbat.block_size.to_f).ceil * @bbat.block_size - io.size
 				io.write 0.chr * padding
@@ -216,8 +222,7 @@ module Ole # :nodoc:
 
 			# serialize the sbat
 			# perhaps the blocks used by the sbat should be marked with BAT?
-			RangesIOResizeable.open @bbat, @header.sbat_start do |io|
-				io.truncate 0
+			RangesIOResizeable.open @bbat, 'w', :first_block => @header.sbat_start do |io|
 				io.write @sbat.to_s
 				@header.sbat_start = io.first_block
 				@header.num_sbat = @bbat.chain(@header.sbat_start).length
@@ -248,7 +253,7 @@ module Ole # :nodoc:
 			# the actual bbat allocation table is itself stored throughout the file, and that chain
 			# is stored in the initial blocks, and the mbat blocks.
 			num_mbat_blocks = 0
-			io = RangesIOResizeable.new @bbat, AllocationTable::EOC
+			io = RangesIOResizeable.new @bbat, 'w', :first_block => AllocationTable::EOC
 			# truncate now, so that we can simplify size calcs - the mbat blocks will be appended in a
 			# contiguous chunk at the end.
 			# hmmm, i think this truncate should be matched with a truncate of the underlying io. if you
@@ -289,6 +294,7 @@ module Ole # :nodoc:
 			num_mbat_blocks.times { @bbat << AllocationTable::META_BAT }
 
 			# now finally write the bbat, using a not resizable io.
+			# the mode here will be 'r', which allows write atm. 
 			RangesIO.open(@io, :ranges => ranges) { |io| io.write @bbat.to_s }
 
 			# this is the mbat. pad it out.
@@ -320,7 +326,7 @@ module Ole # :nodoc:
 			@dirents = [@root]
 			@root.idx = 0
 			@sb_file.close if @sb_file
-			@sb_file = RangesIOResizeable.new @bbat, AllocationTable::EOC
+			@sb_file = RangesIOResizeable.new @bbat, :first_block => AllocationTable::EOC
 			@sbat = AllocationTable::Small.new self
 			# throw everything else the hell away
 			@io.truncate 0
@@ -611,12 +617,15 @@ module Ole # :nodoc:
 		class RangesIOResizeable < RangesIO
 			attr_reader   :bat
 			attr_accessor :first_block
-			def initialize bat, first_block, size=nil
+			def initialize bat, mode='r', params={}
+				mode, params = 'r', mode if Hash === mode
+				first_block, size = params.values_at :first_block, :size
+				raise ArgumentError, 'must specify first_block' unless first_block
 				@bat = bat
 				self.first_block = first_block
-				# we know cache the blocks chain, for faster resizing.
+				# we now cache the blocks chain, for faster resizing.
 				@blocks = @bat.chain first_block
-				super @bat.io, :ranges => @bat.ranges(@blocks, size)
+				super @bat.io, mode, :ranges => @bat.ranges(@blocks, size)
 			end
 
 			def truncate size
@@ -644,10 +653,8 @@ module Ole # :nodoc:
 			attr_reader :dirent
 			def initialize dirent, mode='r'
 				@dirent = dirent
-				super @dirent.ole.bat_for_size(@dirent.size), @dirent.first_block, @dirent.size
-				# FIXME - need to fix propagation of arguments
-				@mode = IO::Mode.new mode
-				truncate 0 if @mode.truncate?
+				super @dirent.ole.bat_for_size(@dirent.size), mode,
+					:first_block => @dirent.first_block, :size => @dirent.size
 			end
 
 			def truncate size
@@ -932,3 +939,4 @@ module Ole # :nodoc:
 		end
 	end
 end
+

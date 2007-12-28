@@ -1,4 +1,3 @@
-
 # 
 # A file with general support functions used by most files in the project.
 # 
@@ -156,5 +155,83 @@ module RecursivelyEnumerable
 		end
 	end
 	protected :to_tree_helper
+end
+
+# can include File::Constants
+class IO
+	BINARY = 0x4 unless defined?(BINARY)
+
+	# nabbed from rubinius, and modified
+	def self.parse_mode mode
+		ret = 0
+
+		case mode[0]
+		when ?r; ret |= RDONLY
+		when ?w; ret |= WRONLY | CREAT | TRUNC
+		when ?a; ret |= WRONLY | CREAT | APPEND
+		else raise ArgumentError, "illegal access mode #{mode}"
+		end
+
+		(1...mode.length).each do |i|
+			case mode[i]
+			when ?+; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
+			when ?b; ret |= BINARY
+			else raise ArgumentError, "illegal access mode #{mode}"
+			end
+		end
+	
+		ret
+	end
+
+	class Mode
+		NAMES = %w[rdonly wronly rdwr creat trunc append binary]
+
+		attr_reader :flags
+		def initialize flags
+			flags = IO.parse_mode flags.to_str if flags.respond_to? :to_str
+			raise ArgumentError, "invalid flags - #{flags.inspect}" unless Fixnum === flags
+			@flags = flags
+		end
+
+		def writeable?
+			#(@flags & IO::RDONLY) == 0
+			(@flags & 0x3) != IO::RDONLY
+		end
+
+		def readable?
+			(@flags & IO::WRONLY) == 0
+		end
+
+		def truncate?
+			(@flags & IO::TRUNC) != 0
+		end
+
+		def append?
+			(@flags & IO::APPEND) != 0
+		end
+
+		def create?
+			(@flags & IO::CREAT) != 0
+		end
+
+		def binary?
+			(@flags & IO::BINARY) != 0
+		end
+
+		# revisit this
+		def apply io
+			if truncate?
+				io.truncate 0
+			elsif append?
+				io.seek IO::SEEK_END, 0
+			end
+		end
+
+		def inspect
+			names = NAMES.map { |name| name if (flags & IO.const_get(name.upcase)) != 0 }
+			names.unshift 'rdonly' if (flags & 0x3) == 0
+			"#<#{self.class} #{names.compact * '|'}>"
+		end
+	end
 end
 
