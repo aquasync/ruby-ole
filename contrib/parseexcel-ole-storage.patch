@@ -1,0 +1,42 @@
+--- parseexcel-0.5.2/lib/parseexcel/parser.rb	2007-08-23 20:59:29.000000000 +1000
++++ parseexcel-0.5.2/lib/parseexcel/parser.rb	2007-08-23 21:00:57.000000000 +1000
+@@ -22,7 +22,9 @@
+ #
+ # Parser -- Spreadsheet::ParseExcel -- 10.06.2003 -- hwyss@ywesee.com 
+ 
+-require 'parseexcel/olestorage'
++require 'rubygems'
++require 'ole/file_system'
++
+ require 'parseexcel/workbook'
+ require 'parseexcel/worksheet'
+ require 'parseexcel/format'
+@@ -166,16 +168,12 @@
+ =end
+ 			end
+ 			def parse(source, format=nil)
+-				begin
++				Ole::Storage.open source, 'rb' do |@ole|
+ 					#0. New $oBook
+ 					@workbook = Workbook.new
+ 					#1.Get content
+-					@ole = OLE::Storage.new(source)
+-					biff = @ole.search_pps(
+-						[
+-							OLE.asc2ucs('Book'),
+-							OLE.asc2ucs('Workbook'),
+-						], true).first.data
++					name = @ole.dir.entries('.').find { |child| child.name =~ /^(Book|Workbook)$/i }
++					biff = @ole.file.read name
+ 
+ 					#2. Ready for format
+ 					@workbook.format = (format || Format.new)
+@@ -229,8 +227,6 @@
+ 						end
+ 					end
+ 					@workbook
+-				ensure
+-					@ole.close if @ole
+ 				end
+ 			end
+ 			def set_event_handler(key, handler)
