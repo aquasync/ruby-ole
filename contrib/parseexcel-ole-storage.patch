@@ -26,7 +26,7 @@
 -							OLE.asc2ucs('Book'),
 -							OLE.asc2ucs('Workbook'),
 -						], true).first.data
-+					name = @ole.dir.entries('.').find { |child| child.name =~ /^(Book|Workbook)$/i }
++					name = @ole.dir.entries('.').find { |n| n =~ /^(Book|Workbook)$/i }
 +					biff = @ole.file.read name
  
  					#2. Ready for format

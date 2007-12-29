@@ -7,7 +7,7 @@
  class Workbook < BIFFWriter
     BOF = 11
     EOF = 4
-@@ -95,14 +98,13 @@
+@@ -95,14 +98,12 @@
     end
     
     def store_ole_file
@@ -21,9 +21,8 @@
 -      }
 +      Ole::Storage.open @file, 'wb+' do |ole|
 +         ole.file.open 'Book', 'w' do |f|
-+               f.write @data
-+               @worksheets.each { |sheet| f.write sheet.data }
-+            end
++            f.write @data
++            @worksheets.each { |sheet| f.write sheet.data }
 +         end
 +      end
     end
