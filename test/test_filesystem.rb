@@ -49,7 +49,7 @@ end
 
 class OleFsNonmutatingTest < Test::Unit::TestCase
 	def setup
-		@ole = Ole::Storage.open TEST_DIR + '/oleWithDirs.ole'
+		@ole = Ole::Storage.open TEST_DIR + '/oleWithDirs.ole', 'rb'
 	end
 
 	def teardown
@@ -502,7 +502,7 @@ end
 class OleFsFileStatTest < Test::Unit::TestCase
 
 	def setup
-		@ole = Ole::Storage.open TEST_DIR + '/oleWithDirs.ole'
+		@ole = Ole::Storage.open TEST_DIR + '/oleWithDirs.ole', 'rb'
 	end
 
 	def teardown
@@ -569,7 +569,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 	def setup
 		# we use an in memory copy of the file instead of the original
 		# file based.
-		@io = StringIO.new File.read(TEST_DIR + '/oleWithDirs.ole')
+		@io = StringIO.new open(TEST_DIR + '/oleWithDirs.ole', 'rb', &:read)
 	end
 
 	def teardown
@@ -660,12 +660,10 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 end
 
 class ZipFsDirectoryTest < Test::Unit::TestCase
-	TEST_ZIP = "zipWithDirs_copy.zip"
-
 	def setup
 		# we use an in memory copy of the file instead of the original
 		# file based.
-		@io = StringIO.new File.read(TEST_DIR + '/oleWithDirs.ole')
+		@io = StringIO.new open(TEST_DIR + '/oleWithDirs.ole', 'rb', &:read)
 	end
 
 	def teardown

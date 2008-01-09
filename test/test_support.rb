@@ -11,7 +11,7 @@ class TestSupport < Test::Unit::TestCase
 	def test_file
 		assert_equal 4096, open("#{TEST_DIR}/oleWithDirs.ole") { |f| f.size }
 		# point is to have same interface as:
-		assert_equal 4096, StringIO.open(File.read("#{TEST_DIR}/oleWithDirs.ole")).size
+		assert_equal 4096, StringIO.open(open("#{TEST_DIR}/oleWithDirs.ole", 'rb', &:read)).size
 	end
 
 	def test_enumerable

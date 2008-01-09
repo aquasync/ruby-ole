@@ -1,0 +1,874 @@
+
+<microsoft_search_schema
+    filetype="catalog configuration"
+    version="1.0">
+
+<column
+    name="DocAddress"
+    description="Absolute URL to the doc, including the filename. Index Server calls this property VPath and stores a relative URL, from the Query propset"
+    type="VT_LPWSTR"
+    propid="49691c90-7e17-101a-a91c-08002b2ecda9/9"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="Description"
+    description="If an HTML meta name=description tag exists, it is mapped to this. If the description tag does not exist, the catalog builder puts the DocSubject first, if it exists, and then 'AutodescriptionLength' characters of the file contents in this property. 'AutodescriptionLength' is defined in Gathrprm.txt.  Both PropSet and Property name are 'characterization'"
+    type="VT_LPWSTR"
+    propid="560c36c0-503a-11cf-baa1-00004c752a9a/2"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocTitle"
+    description="The title of the document, from SummaryInfo propset."
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/2"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocSubject"
+    description="Document subject, from SummaryInfo propset."
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/3"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="DocAuthor"
+    description="Original author of the document, from SummaryInfo propset."
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/4"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocKeywords"
+    description="Document keywords, from SummaryInfo propset."
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/5"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="DocComments"
+    description="Editorial comments about document, from SummaryInfo propset."
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/6"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="DocTemplate"
+    description="from the SummaryInfo propset"
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/7"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocLastAuthor"
+    description="from the SummaryInfo propset"
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/8"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocRevNumber"
+    description="from the SummaryInfo propset"
+    type="VT_LPWSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/9"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocEditTime"
+    description="Total time spent editting document, from the SummaryInfo propset"
+    type="VT_FILETIME"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/10"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocLastPrinted"
+    description="Date/time document was last printed, from the SummaryInfo propset"
+    type="VT_FILETIME"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/11"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocCreatedTm"
+    description="Date/time file was originally created, from SummaryInfo propset (Office Docs)"
+    type="VT_FILETIME"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/12"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocLastSavedTm"
+    description="Date/time file was last saved, from SummaryInfo propset (Office Docs)"
+    type="VT_FILETIME"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/13"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocPageCount"
+    description="Total number of pages in document, from SummaryInfo propset"
+    type="VT_I4"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/14"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocWordCount"
+    description="Total number of words in document, from SummaryInfo propset"
+    type="VT_I4"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/15"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocCharCount"
+    description="Total number of characters in document, from SummaryInfo propset"
+    type="VT_I4"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/16"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocAppName"
+    description="Name of app that created the file, from SummaryInfo propset"
+    type="VT_LPSTR"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/18"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Security"
+    description="Access control information, from SummaryInfo propset"
+    type="VT_I4"
+    propid="f29f85e0-4ff9-1068-ab91-08002b27b3d9/19"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocCategory"
+    description="MS Office category, from DocSummaryInfo propset"
+    type="VT_LPWSTR"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/2"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocPresentationTarget"
+    description="PowerPoint presentation format - (35mm, printer, video, etc.), from DocSummaryInfo propset"
+    type="VT_LPSTR"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/3"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocByteCount"
+    description="Number of bytes in document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/4"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocLineCount"
+    description="Number of lines in document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/5"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocParaCount"
+    description="Number of paragraphs in documen, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/6"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocSlideCount"
+    description="number of slides in document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/7"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocNoteCount"
+    description="Number of notes associated with document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/8"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocHiddenCount"
+    description="Number of hidden slides in document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/9"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="MMClips"
+    description="Number of multimedia clips in document, from DocSummaryInfo propset"
+    type="VT_I4"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/10"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="ScaleCrop"
+    description="Set to True (-1) for thumbnail scaling, False (0) for cropping. For FindFile, from DocSummaryInfo propset"
+    type="VT_BOOL"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/11"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HeadingPairs"
+    description="Internal property for indenting groups of headings in Office docs, from DocSummaryInfo propset"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/12"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocPartTitles"
+    description="Names of document parts; e.g., Excel sheet names, PowerPoint slide titles, from DocSummaryInfo propset"
+    type="VT_LPSTR"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/13"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocManager"
+    description="Manager of the project, from Project, from DocSummaryInfo propset"
+    type="VT_LPSTR"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/14"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="DocCompany"
+    description="Company name, from Project, from DocSummaryInfo propset"
+    type="VT_LPSTR"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/15"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="LinksUpToDate"
+    description="Custom links are up to date, from DocSummaryInfo propset"
+    type="VT_BOOL"
+    propid="d5cdd502-2e9c-101b-9397-08002b2cf9ae/16"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="FileName"
+    description="Long file name, from Storage propset"
+    type="VT_LPWSTR"
+    propid="b725f130-47ef-101a-a5f1-02608c9eebac/10"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="FileWrite"
+    description="Time the file was last modified."
+    type="VT_FILETIME"
+    propid="b725f130-47ef-101a-a5f1-02608c9eebac/14"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DetectedLanguage"
+    description="Automatically detected language of the document. May have multiple values. From the NetLibraryInfo propset"
+    propid="c82bf596-b831-11d0-b733-00aa00a1ebd2/2"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="HTMLComment"
+    description="HTML comment tag"
+    type="VT_LPWSTR"
+    propid="c82bf596-b831-11d0-b733-00aa00a1ebd2/3"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="CrawlNumberModified"
+    description="The crawl number when the document was last updated in the catalog."
+    type="VT_FILETIME"
+    propid="0b63e350-9ccc-11d0-bcdb-00805fccce04/4"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="MimeType"
+    description="The MIME type of the document, if known."
+    type="VT_LPWSTR"
+    propid="0b63e350-9ccc-11d0-bcdb-00805fccce04/5"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DocSignature"
+    description="MD5 digest, a checksum on the document that can be used to eliminate duplicates, from the NetLibrary propset"
+    type="VT_LPWSTR"
+    propid="0b63e350-9ccc-11d0-bcdb-00805fccce04/6"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="SiteName"
+    description="The site name extracted from the document URL. Useful for sorting."
+    type="VT_LPWSTR"
+    propid="0b63e343-9ccc-11d0-bcdb-00805fccce04/4"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="DefaultCodePage"
+    description="Useful for displaying URLs."
+    type="VT_UI4"
+    propid="0b63e343-9ccc-11d0-bcdb-00805fccce04/DefaultCodePage"
+    index="no"
+    retrieve="yes">
+</column>
+
+<column
+    name="HTMLHeading1"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/3"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HTMLHeading2"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/4"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HTMLHeading3"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/5"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HTMLHeading4"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve="
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/6"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HTMLHeading5"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/7"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="HTMLHeading6"
+    description="From the HTMLInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/8"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Img_Alt"
+    description="Image alternate text, from the HTML Info propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="70eb7a10-55d9-11cf-b75b-00aa0051fe20/IMG.ALT"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="A_HREF"
+    description="HTML anchor link; the URL from A HREF=URL, from the Link Info propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/A.HREF"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="Base_HREF"
+    description="URL from base tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/BASE.HREF"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Link_HREF"
+    description="URL from link tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/LINK.HREF"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Meta_URL"
+    description="URL from &lt;meta URL=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/META.URL"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Meta_Refresh"
+    description="URL from &lt;meta refresh=...&gt; tag, from LinkInformation propset"
+    type="VT_LPWSTR"
+    propid="d1b5d3f0-c0b3-11cf-9a92-00a0c908dbf1/REFRESH"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Frame_Src"
+    description="URL from &lt;frame src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/FRAME.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="IFrame_Src"
+    description="URL from &lt;iframe src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/IFRAME.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Area_HREF"
+    description="URL from area tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/AREA.HREF"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Img_Src"
+    description="URL from &lt;img src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/IMG.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Img_DynSrc"
+    description="URL from &lt;img dynsrc=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/IMG.DYNSRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Img_Usemap"
+    description="URL from &lt;img usemap=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/IMG.USEMAP"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Body_Background"
+    description="URL from &lt;body background=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/BODY.BACKGROUND"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="BgSound_Src"
+    description="URL from &lt;bgsound src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/BGSOUND.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Applet_Codebase"
+    description="URL from &lt;applet codebase=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/APPLET.CODEBASE"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Applet_Code"
+    description="URL from &lt;applet code=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/APPLET.CODE"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Object_Codebase"
+    description="URL from &lt;object codebase=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/OBJECT.CODEBASE"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Object_Name"
+    description="URL from &lt;object name=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/OBJECT.NAME"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Object_Usemap"
+    description="URL from &lt;object usemap=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/OBJECT.USEMAP"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Embed_Src"
+    description="URL from &lt;embed src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/EMBED.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Input_Src"
+    description="URL from &lt;input src=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/INPUT.SRC"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Td_Background"
+    description="URL from &lt;td background=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/TD.BACKGROUND"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Th_Background"
+    description="URL from &lt;th background=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/TH.BACKGROUND"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="TR_Background"
+    description="URL from &lt;tr background=...&gt; tag, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/TR.BACKGROUND"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Script_URL"
+    description="URLs embedded in script text, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/SCRIPT"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Style_URL"
+    description="URLs embedded in stylesheet text, from LinkInformation propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="c82bf597-b831-11d0-b733-00aa00a1ebd2/STYLE"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="Topic"
+    description="Used in Knowledge Manager to provide hierarchical categories for browsing. Also used in Search sample pages."
+    type="VT_LPWSTR"
+    propid="d1b5d3f0-c0b3-11cf-9a92-00a0c908dbf1/Topic"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="VBScript"
+    description="Text in a VBScript tag, from ScriptInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="31f400a0-fd07-11cf-b9bd-00aa003db18e/VBScript"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="JavaScript"
+    description="Text in a JavaScript tag, from ScriptInfo propset.  NOTE: this column is not retrievable; Retrieve=&quot;Yes&quot; has no effect."
+    type="VT_LPWSTR"
+    propid="31f400a0-fd07-11cf-b9bd-00aa003db18e/JavaScript"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="NNTP_Newsgroup"
+    description="Newsgroup that this message file is in, from NNTP SummaryInformation propset"
+    type="VT_LPWSTR"
+    propid="aa568eec-e0e5-11cf-8fda-00aa00a14f93/2"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="NNTP_Newsgroups"
+    description="All newsgroups message is posted to, from NNTP SummaryInformation propset"
+    type="VT_LPWSTR"
+    propid="aa568eec-e0e5-11cf-8fda-00aa00a14f93/3"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="NNTP_Refs"
+    description="References header, from NNTP SummaryInformation propset"
+    type="VT_LPWSTR"
+    propid="aa568eec-e0e5-11cf-8fda-00aa00a14f93/4"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="NNTP_Messageid"
+    description="Message-Id header, from NNTP SummaryInformation propset"
+    type="VT_LPWSTR"
+    propid="aa568eec-e0e5-11cf-8fda-00aa00a14f93/7"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="sample_meta_name"
+    description="Sample meta name=&lt;name&gt; tag. Copy this and change both &lt;sample_meta_name&gt; occurrences to match the tag to be cataloged."
+    type="VT_LPWSTR"
+    propid="d1b5d3f0-c0b3-11cf-9a92-00a0c908dbf1/sample_meta_name"
+    index="no"
+    retrieve="no">
+</column>
+
+<column
+    name="MessageClass"
+    description="Exchange Message class. Identifies type of message, such as Note, Encrypted, Signed, Form, etc"
+    type="VT_LPWSTR"
+    propid="85ac0960-1819-11d1-896f-00805f053bab/26"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="MessageDisplayName"
+    description="Display name of the recipient."
+    type="VT_LPWSTR"
+    propid="85ac0960-1819-11d1-896f-00805f053bab/3588"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="MessageDisplayCC"
+    description="Display name of the carbon copy recipient."
+    type="VT_LPWSTR"
+    propid="85ac0960-1819-11d1-896f-00805f053bab/3587"
+    index="yes"
+    retrieve="no">
+</column>
+
+<column
+    name="MessageFolderName"
+    description="Folder in which the message is present"
+    type="VT_LPWSTR"
+    propid="85ac0960-1819-11d1-896f-00805f053bab/85"
+    index="yes"
+    retrieve="yes">
+</column>
+
+<column
+    name="MessageFolderPath"
+    description="Full path of the folder in which the message is present"
+    type="VT_LPWSTR"
+    propid="85ac0960-1819-11d1-896f-00805f053bab/101"
+    index="no"
+    retrieve="no">
+</column>
+
+<stoplist
+    language="English_US"
+    file="noise.enu"
+    primarylanguage=9
+    sublanguage=1>
+
+<stoplist
+    language="English_UK"
+    file="noise.eng"
+    primarylanguage=9
+    sublanguage=2>
+
+<stoplist
+    language="Neutral"
+    file="noise.dat"
+    primarylanguage=0
+    sublanguage=0>
+
+<stoplist
+    language="German_German"
+    file="noise.deu"
+    primarylanguage=7
+    sublanguage=1>
+
+<stoplist
+    language="Spanish_Modern"
+    file="noise.esn"
+    primarylanguage=10
+    sublanguage=3>
+
+<stoplist
+    language="Swedish_Default"
+    file="noise.sve"
+    primarylanguage=29
+    sublanguage=0>
+
+<stoplist
+    language="Dutch_Dutch"
+    file="noise.nld"
+    primarylanguage=19
+    sublanguage=1>
+
+<stoplist
+    language="French_French"
+    file="noise.fra"
+    primarylanguage=12
+    sublanguage=1>
+
+<stoplist
+    language="Italian_Italian"
+    file="noise.ita"
+    primarylanguage=16
+    sublanguage=1>
+
+<stoplist
+    language="Japanese_Default"
+    file="noise.jpn"
+    primarylanguage=17
+    sublanguage=0>
+
+<stoplist
+    language="Chinese_Simplified"
+    file="noise.chs"
+    primarylanguage=4
+    sublanguage=2>
+
+<stoplist
+    language="Chinese_Traditional"
+    file="noise.cht"
+    primarylanguage=4
+    sublanguage=1>
+
+<stoplist
+    language="Korean_Default"
+    file="noise.kor"
+    primarylanguage=18
+    sublanguage=1>
+
+</microsoft_search_schema>

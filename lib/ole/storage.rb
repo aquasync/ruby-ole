@@ -67,7 +67,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.3'
+		VERSION = '1.2.4'
 
 		# options used at creation time
 		attr_reader :params
@@ -308,12 +308,12 @@ module Ole # :nodoc:
 				q = @bbat.block_size / 4
 				mbat_data += [AllocationTable::AVAIL] *((mbat_data.length / q.to_f).ceil * q - mbat_data.length)
 				ranges = @bbat.ranges((0...num_mbat_blocks).map { |i| @header.mbat_start + i })
-				RangesIO.open(@io, :ranges => ranges) { |io| io.write mbat_data.pack('L*') }
+				RangesIO.open(@io, :ranges => ranges) { |io| io.write mbat_data.pack('V*') }
 			end
 
 			# now seek back and write the header out
 			@io.seek 0
-			@io.write @header.to_s + bbat_chain[0, 109].pack('L*')
+			@io.write @header.to_s + bbat_chain[0, 109].pack('V*')
 			@io.flush
 		end
 
@@ -333,10 +333,13 @@ module Ole # :nodoc:
 		end
 
 		# could be useful with mis-behaving ole documents. or to just clean them up.
-		# FIXME: heard Tempfile is not binary on windows. check
 		def repack temp=:file
 			case temp
-			when :file; Tempfile.open 'ole-repack', &method(:repack_using_io)
+			when :file
+				Tempfile.open 'ole-repack' do |io|
+					io.binmode
+					repack_using_io io
+				end
 			when :mem;  StringIO.open(&method(:repack_using_io))
 			else raise ArgumentError, "unknown temp backing #{temp.inspect}"
 			end
@@ -486,7 +489,7 @@ module Ole # :nodoc:
 				# do you really use AVAIL? they probably extend past end of file, and may shortly
 				# be used for the bat. not really good.
 				table += [AVAIL] * (num - (table.length % num)) if (table.length % num) != 0
-				table.pack 'L*'
+				table.pack 'V*'
 			end
 
 			# rewrote this to be non-recursive as it broke on a large attachment
@@ -716,7 +719,7 @@ module Ole # :nodoc:
 			)
 			include RecursivelyEnumerable
 
-			PACK = 'a64 S C C L3 a16 L a8 a8 L2 a4'
+			PACK = 'a64 v C C V3 a16 V a8 a8 V2 a4'
 			SIZE = 128
 			TYPE_MAP = {
 				# this is temporary
@@ -754,7 +757,7 @@ module Ole # :nodoc:
 				super(*values)
 
 				# extra parsing from the actual struct values
-				@name = params[:name] || Types::Variant.load(Types::VT_LPWSTR, name_utf16[0...name_len].sub(/\x00\x00$/, ''))
+				@name = params[:name] || Types::Variant.load(Types::VT_LPWSTR, name_utf16[0...name_len])
 				@type = if params[:type]
 					unless TYPE_MAP.values.include?(params[:type])
 						raise ArgumentError, "unknown type #{params[:type].inspect}"

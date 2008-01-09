@@ -22,7 +22,17 @@ module Ole # :nodoc:
 			end
 		end
 
-		class Lpstr < Data
+		class Lpstr < String
+			def self.load str
+				# not sure if its always there, but there is often a trailing
+				# null byte.
+				new str.chomp(0.chr)
+			end
+
+			def self.dump str
+				# do i need to append the null byte?
+				str.to_s
+			end
 		end
 
 		# for VT_LPWSTR
@@ -31,10 +41,11 @@ module Ole # :nodoc:
 			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
 			
 			def self.load str
-				new FROM_UTF16.iconv(str)
+				new FROM_UTF16.iconv(str).chomp(0.chr)
 			end
 			
 			def self.dump str
+				# need to append nulls?
 				TO_UTF16.iconv str
 			end
 		end
@@ -74,7 +85,7 @@ module Ole # :nodoc:
 				# don't bother to use const_get here
 				bignum = (time - EPOCH) * 86400 * 1e7.to_i
 				high, low = bignum.divmod 1 << 32
-				[low, high].pack 'L2'
+				[low, high].pack 'V2'
 			end
 		end
 

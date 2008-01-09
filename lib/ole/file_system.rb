@@ -132,7 +132,11 @@ module Ole # :nodoc:
 				# just for the .. and . handling
 				# Hmmm, FIXME: won't work on windows i think. on windows it will prepend
 				# the current drive i believe. may just need to strip the first 2 chars.
-				File.expand_path path
+				if RUBY_PLATFORM =~ /win/o
+					File.expand_path(path)[2..-1]
+				else
+					File.expand_path path
+				end
 			end
 
 			# +orig_path+ is just so that we can use the requested path

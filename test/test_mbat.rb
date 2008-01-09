@@ -10,6 +10,8 @@ require 'tempfile'
 class TestWriteMbat < Test::Unit::TestCase
 	def test_write_mbat
 		Tempfile.open 'myolefile' do |temp|
+			temp.binmode
+
 			# this used to raise an error at flush time, due to failure to write the mbat
 			Ole::Storage.open temp do |ole|
 				# create a 10mb file

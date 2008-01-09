@@ -1,3 +1,8 @@
+== 1.2.4 / ...
+
+- Make all tests pass on windows (issue #1).
+- Make all tests pass on a power pc (running ubuntu).
+
 == 1.2.3 / 2007-12-28
 
 - MBAT write support re-implmented. Can now write files over ~8mb again.
