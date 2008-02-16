@@ -8,7 +8,19 @@ require 'digest/sha1'
 require 'stringio'
 require 'tempfile'
 require 'zlib'
-require 'base64'
+
+begin
+	require 'base64'
+rescue LoadError
+	# for 1.9 compatability - for now. not sure what
+	# advised migration is
+	module Base64
+		module_function
+		def decode64(str)
+			str.unpack("m")[0]
+		end
+	end
+end
 
 #
 # = TODO

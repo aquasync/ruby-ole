@@ -121,7 +121,7 @@ module Ole
 			end
 
 			def load_section_list str
-				@sections = str.scan(/.{#{Section::SIZE}}/m).map { |str| Section.new str, self }
+				@sections = str.scan(/.{#{Section::SIZE}}/m).map { |s| Section.new s, self }
 			end
 		end
 	end
@@ -159,8 +159,8 @@ module Ole
 				# maybe taking it one step further, i'd hide the section thing,
 				# and let you use composite keys, like
 				# propset[4, guid] eg in MAPI, and just propset.doc_author.
-				section = sections.find do |section|
-					section.guid == Types::PropertySet::FMTID_SummaryInformation
+				section = sections.find do |s|
+					s.guid == Types::PropertySet::FMTID_SummaryInformation
 				end
 				return PropertySetSectionProxy.new(dirent, sections.index(section))
 			end

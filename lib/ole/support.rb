@@ -27,17 +27,21 @@ class File # :nodoc:
 end
 
 class Symbol # :nodoc:
-	def to_proc
-		proc { |a| a.send self }
+	unless :x.respond_to? :to_proc
+		def to_proc
+			proc { |a| a.send self }
+		end
 	end
 end
 
 module Enumerable # :nodoc:
-	# 1.9 backport
-	def group_by
-		hash = Hash.new { |hash, key| hash[key] = [] }
-		each { |item| hash[yield(item)] << item }
-		hash
+	unless [].respond_to? :group_by
+		# 1.9 backport
+		def group_by
+			hash = Hash.new { |h, key| h[key] = [] }
+			each { |item| hash[yield(item)] << item }
+			hash
+		end
 	end
 
 	def sum initial=0
@@ -159,23 +163,21 @@ end
 
 # can include File::Constants
 class IO
-	BINARY = 0x4 unless defined?(BINARY)
-
 	# nabbed from rubinius, and modified
 	def self.parse_mode mode
 		ret = 0
 
-		case mode[0]
-		when ?r; ret |= RDONLY
-		when ?w; ret |= WRONLY | CREAT | TRUNC
-		when ?a; ret |= WRONLY | CREAT | APPEND
+		case mode[0, 1]
+		when 'r'; ret |= RDONLY
+		when 'w'; ret |= WRONLY | CREAT | TRUNC
+		when 'a'; ret |= WRONLY | CREAT | APPEND
 		else raise ArgumentError, "illegal access mode #{mode}"
 		end
 
 		(1...mode.length).each do |i|
-			case mode[i]
-			when ?+; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
-			when ?b; ret |= BINARY
+			case mode[i, 1]
+			when '+'; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
+			when 'b'; ret |= Mode::BINARY
 			else raise ArgumentError, "illegal access mode #{mode}"
 			end
 		end
@@ -184,6 +186,18 @@ class IO
 	end
 
 	class Mode
+		# ruby 1.9 defines binary as 0, which isn't very helpful.
+		# its 4 in rubinius. no longer using
+		#
+		#   BINARY = 0x4 unless defined?(BINARY)
+		#
+		# for that reason, have my own constants module here
+		module Constants
+			include File::Constants
+			BINARY = 0x4
+		end
+		
+		include Constants
 		NAMES = %w[rdonly wronly rdwr creat trunc append binary]
 
 		attr_reader :flags
@@ -194,28 +208,28 @@ class IO
 		end
 
 		def writeable?
-			#(@flags & IO::RDONLY) == 0
-			(@flags & 0x3) != IO::RDONLY
+			#(@flags & RDONLY) == 0
+			(@flags & 0x3) != RDONLY
 		end
 
 		def readable?
-			(@flags & IO::WRONLY) == 0
+			(@flags & WRONLY) == 0
 		end
 
 		def truncate?
-			(@flags & IO::TRUNC) != 0
+			(@flags & TRUNC) != 0
 		end
 
 		def append?
-			(@flags & IO::APPEND) != 0
+			(@flags & APPEND) != 0
 		end
 
 		def create?
-			(@flags & IO::CREAT) != 0
+			(@flags & CREAT) != 0
 		end
 
 		def binary?
-			(@flags & IO::BINARY) != 0
+			(@flags & BINARY) != 0
 		end
 
 =begin
@@ -230,7 +244,7 @@ class IO
 =end
 
 		def inspect
-			names = NAMES.map { |name| name if (flags & IO.const_get(name.upcase)) != 0 }
+			names = NAMES.map { |name| name if (flags & Mode.const_get(name.upcase)) != 0 }
 			names.unshift 'rdonly' if (flags & 0x3) == 0
 			"#<#{self.class} #{names.compact * '|'}>"
 		end

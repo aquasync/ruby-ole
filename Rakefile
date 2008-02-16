@@ -37,9 +37,11 @@ end
 
 Rake::RDocTask.new do |t|
 	t.rdoc_dir = 'doc'
+	t.rdoc_files.include 'lib/**/*.rb'
+	t.rdoc_files.include 'README'
 	t.title    = "#{PKG_NAME} documentation"
 	t.options += %w[--line-numbers --inline-source --tab-width 2]
-	t.rdoc_files.include 'lib/**/*.rb'
+	t.main	   = 'README'
 end
 
 spec = Gem::Specification.new do |s|
@@ -62,7 +64,7 @@ spec = Gem::Specification.new do |s|
 
 	s.has_rdoc = true
 	s.rdoc_options += [
-		'--main', 'Ole::Storage',
+		'--main', 'README',
 		'--title', "#{PKG_NAME} documentation",
 		'--tab-width', '2'
 	]

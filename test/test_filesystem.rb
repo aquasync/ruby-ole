@@ -799,8 +799,8 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 			d.close
 
 			zf.dir.open("dir1") {
-				|d|
-				assert_equal(['.', '..', "dir11", "file11", "file12"].sort, d.entries.sort)
+				|d2|
+				assert_equal(['.', '..', "dir11", "file11", "file12"].sort, d2.entries.sort)
 			}
 		}
 	end

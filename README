@@ -1,25 +1,25 @@
+= Introduction
+
+For now, see the docs for the Ole::Storage class.
+
 = TODO
 
-== 1.2.4
-
-* platform fixes
-
-== 1.2.5
+== 1.2.6
 
 * fix property sets a bit more
   - write support
   - make Section not inherit from Struct. make more like MAPI::PropertyStore,
     including support for enumeration over properties, named & unnamed, maybe
-	nicer key support, conversion to hash etc, so that you can just do:
-	  meta_data = ole.summary_info.to_h.merge(ole.doc_summary_info.to_h)
-	maybe even define ole.meta_data to do something similar, though throw in
-	some additional information that it can figure out. then extend oletool
-	to have a new yaml meta data dumping mode.
+    nicer key support, conversion to hash etc, so that you can just do:
+      meta_data = ole.summary_info.to_h.merge(ole.doc_summary_info.to_h)
+    maybe even define ole.meta_data to do something similar, though throw in
+    some additional information that it can figure out. then extend oletool
+    to have a new yaml meta data dumping mode.
 * a function that classifies an ole file. had something similar at one point.
   used some of the "magic" files, like CompObj. fallback was typical patterns
   exhibited by office files. maybe returns the mime type.
 
-== 1.2.6
+== 1.2.7
 
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc. done?
@@ -42,4 +42,3 @@
   ole implementations (maybe perl's, and poifs) just to check its in the
   ballpark, with no remaining silly bottlenecks.
 * supposedly vba does something weird to ole files. test that.
-* ruby 1.9 support

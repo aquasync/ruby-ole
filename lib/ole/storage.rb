@@ -67,7 +67,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.4'
+		VERSION = '1.2.5'
 
 		# options used at creation time
 		attr_reader :params
@@ -295,7 +295,7 @@ module Ole # :nodoc:
 
 			# now finally write the bbat, using a not resizable io.
 			# the mode here will be 'r', which allows write atm. 
-			RangesIO.open(@io, :ranges => ranges) { |io| io.write @bbat.to_s }
+			RangesIO.open(@io, :ranges => ranges) { |f| f.write @bbat.to_s }
 
 			# this is the mbat. pad it out.
 			bbat_chain += [AllocationTable::AVAIL] * [109 - bbat_chain.length, 0].max
@@ -308,7 +308,7 @@ module Ole # :nodoc:
 				q = @bbat.block_size / 4
 				mbat_data += [AllocationTable::AVAIL] *((mbat_data.length / q.to_f).ceil * q - mbat_data.length)
 				ranges = @bbat.ranges((0...num_mbat_blocks).map { |i| @header.mbat_start + i })
-				RangesIO.open(@io, :ranges => ranges) { |io| io.write mbat_data.pack('V*') }
+				RangesIO.open(@io, :ranges => ranges) { |f| f.write mbat_data.pack('V*') }
 			end
 
 			# now seek back and write the header out
@@ -781,6 +781,10 @@ module Ole # :nodoc:
 					self.size = 0 unless @type == :root
 					@children = []
 				end
+				
+				# to silence warnings. used for tree building at load time
+				# only.
+				@idx = nil
 			end
 
 			def open mode='r'

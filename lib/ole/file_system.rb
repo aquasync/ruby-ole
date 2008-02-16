@@ -27,7 +27,7 @@
 # need to implement some more IO functions on RangesIO, like #puts, #print
 # etc, like AbstractOutputStream from zipfile.
 #
-# TODO
+# = TODO
 # 
 # - check Dir.mkdir, and File.open, and File.rename, to add in filename 
 #   length checks (max 32 / 31 or something).
