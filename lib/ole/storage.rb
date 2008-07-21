@@ -67,7 +67,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.5'
+		VERSION = '1.2.6'
 
 		# options used at creation time
 		attr_reader :params
