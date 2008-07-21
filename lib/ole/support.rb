@@ -44,13 +44,16 @@ module Enumerable # :nodoc:
 		end
 	end
 
-	def sum initial=0
-		inject(initial) { |a, b| a + b }
+	unless [].respond_to? :sum
+		def sum initial=0
+			inject(initial) { |a, b| a + b }
+		end
 	end
 end
 
 # move to support?
 class IO # :nodoc:
+	# Copy data from IO-like object +src+, to +dst+
 	def self.copy src, dst
 		until src.eof?
 			buf = src.read(4096)

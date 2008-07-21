@@ -130,9 +130,8 @@ module Ole # :nodoc:
 				path = "#{pwd}/#{path}" unless path =~ /^\//
 				# at this point its already absolute. we use File.expand_path
 				# just for the .. and . handling
-				# Hmmm, FIXME: won't work on windows i think. on windows it will prepend
-				# the current drive i believe. may just need to strip the first 2 chars.
-				if RUBY_PLATFORM =~ /win/o
+				# No longer use RUBY_PLATFORM =~ /win/ as it matches darwin. better way?
+				if File::ALT_SEPARATOR == "\\"
 					File.expand_path(path)[2..-1]
 				else
 					File.expand_path path

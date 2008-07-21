@@ -4,7 +4,7 @@ For now, see the docs for the Ole::Storage class.
 
 = TODO
 
-== 1.2.6
+== 1.2.7
 
 * fix property sets a bit more
   - write support
@@ -19,7 +19,7 @@ For now, see the docs for the Ole::Storage class.
   used some of the "magic" files, like CompObj. fallback was typical patterns
   exhibited by office files. maybe returns the mime type.
 
-== 1.2.7
+== 1.2.8
 
 * fix mode strings - like truncate when using 'w+', supporting append
   'a+' modes etc. done?

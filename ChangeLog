@@ -1,3 +1,8 @@
+== 1.2.6 / 2008-07-21
+
+- Fix FileClass#expand_path to work properly on darwin (issue #2)
+- Guard against Enumerable#sum clash with active support (issue #3)
+
 == 1.2.5 / 2008-02-16
 
 - Make all tests pass on ruby 1.9.
