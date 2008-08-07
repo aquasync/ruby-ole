@@ -27,7 +27,7 @@ def oletool
 		when :tree
 			Ole::Storage.open(file) { |ole| puts ole.root.to_tree }
 		when :repack
-			Ole::Storage.open file, 'r+', &:repack
+			Ole::Storage.open file, 'rb+', &:repack
 		end
 	end
 end
