@@ -166,6 +166,9 @@ end
 
 # can include File::Constants
 class IO
+	# this is for jruby
+	include File::Constants unless defined?(RDONLY)
+
 	# nabbed from rubinius, and modified
 	def self.parse_mode mode
 		ret = 0
