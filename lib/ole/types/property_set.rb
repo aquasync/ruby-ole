@@ -23,7 +23,7 @@ module Ole
 			}
 
 			# define a smattering of the property set guids. 
-			DATA = YAML.load_file(File.dirname(__FILE__) + '/../../data/propids.yaml').
+			DATA = YAML.load_file(File.dirname(__FILE__) + '/../../../data/propids.yaml').
 				inject({}) { |hash, (key, value)| hash.update Clsid.parse(key) => value }
 
 			# create an inverted map of names to guid/key pairs
