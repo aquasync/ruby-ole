@@ -8,7 +8,7 @@ module Ole
 		# different property set streams.
 		#
 		# With this class, you can simply get properties using their names, without
-		# needing to know about the underlying guids, property ids etc. 
+		# needing to know about the underlying guids, property ids etc.
 		#
 		# Example:
 		#
@@ -62,7 +62,7 @@ module Ole
 			# i'm thinking of making file_format and mime_type available through
 			# #[], #each, and #to_h also, as calculated meta data (not assignable)
 			
-			def file_format
+			def comp_obj
 				return unless dirent = @ole.root["\001CompObj"]
 				data = dirent.read
 				# see - https://gnunet.org/svn/Extractor/doc/StarWrite_File_Format.html
@@ -80,10 +80,13 @@ module Ole
 					strings << data[i, len - 1]
 					i += len
 				end
-				username, file_format, *unknown = strings
 				# in the unknown chunk, you usually see something like 'Word.Document.6'
-				# for example.
-				file_format
+				{:username => strings[0], :file_format => strings[1], :unknown => strings[2..-1]}
+			end
+			private :comp_obj
+			
+			def file_format
+				comp_obj[:file_format]
 			end
 
 			def mime_type
@@ -97,9 +100,9 @@ module Ole
 
 				# fallback to heuristics
 				has_file = Hash[*root.children.map { |d| [d.name.downcase, true] }.flatten]
-				return MIME_TYPES[:xls] if has_file['workbook'] or has_file['book']
-				return MIME_TYPES[:doc] if has_file['worddocument'] or has_file['document']
 				return MIME_TYPES[:msg] if has_file['__nameid_version1.0'] or has_file['__properties_version1.0']
+				return MIME_TYPES[:doc] if has_file['worddocument'] or has_file['document']
+				return MIME_TYPES[:xls] if has_file['workbook'] or has_file['book']
 			end
 	
 			def [] key

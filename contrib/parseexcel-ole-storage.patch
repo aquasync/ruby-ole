@@ -6,7 +6,7 @@
  
 -require 'parseexcel/olestorage'
 +require 'rubygems'
-+require 'ole/file_system'
++require 'ole/storage'
 +
  require 'parseexcel/workbook'
  require 'parseexcel/worksheet'
