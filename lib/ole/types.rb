@@ -87,6 +87,10 @@ module Ole # :nodoc:
 				high, low = bignum.divmod 1 << 32
 				[low, high].pack 'V2'
 			end
+			
+			def inspect
+				"#<#{self.class} #{to_s}>"
+			end
 		end
 
 		# for VT_CLSID
@@ -115,7 +119,7 @@ module Ole # :nodoc:
 					vals[3] = ('%04x' % vals[3]).scan(/../).map(&:hex)
 					vals[4] = ('%012x' % vals[4]).scan(/../).map(&:hex)
 					guid = new vals.flatten.pack(PACK)
-					return guid unless guid.delete('{}') == str.downcase.delete('{}')
+					return guid if guid.format.delete('{}') == str.downcase.delete('{}')
 				end
 				raise ArgumentError, 'invalid guid - %p' % str
 			end

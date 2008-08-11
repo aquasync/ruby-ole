@@ -8,7 +8,7 @@ module Ole
 		# serialized in "property set" streams, such as the file "\005SummaryInformation",
 		# in OLE files.
 		#
-		# Think has its roots in MFC property set serialization.
+		# Think it has its roots in MFC property set serialization.
 		#
 		# See http://poi.apache.org/hpsf/internals.html for details
 		#
@@ -23,32 +23,35 @@ module Ole
 			}
 
 			# define a smattering of the property set guids. 
-			#FMTID_SummaryInformation		= Clsid.parse '{f29f85e0-4ff9-1068-ab91-08002b27b3d9}'
-			#FMTID_DocSummaryInformation	= Clsid.parse '{d5cdd502-2e9c-101b-9397-08002b2cf9ae}'
-			#FMTID_UserDefinedProperties	= Clsid.parse '{d5cdd505-2e9c-101b-9397-08002b2cf9ae}'
-
 			DATA = YAML.load_file(File.dirname(__FILE__) + '/../../data/propids.yaml').
 				inject({}) { |hash, (key, value)| hash.update Clsid.parse(key) => value }
+
+			# create an inverted map of names to guid/key pairs
+			PROPERTY_MAP = DATA.inject({}) do |h1, (guid, data)|
+				data[1].inject(h1) { |h2, (id, name)| h2.update name => [guid, id] }
+			end
 
 			module Constants
 				DATA.each { |guid, (name, map)| const_set name, guid }
 			end
 
 			include Constants
+			include Enumerable
 
-			class Section < Struct.new(:guid, :offset)
+			class Section
 				include Variant::Constants
 				include Enumerable
 
 				SIZE = Clsid::SIZE + 4
 				PACK = "a#{Clsid::SIZE}v"
 
+				attr_accessor :guid, :offset
 				attr_reader :length
+
 				def initialize str, property_set
 					@property_set = property_set
-					super(*str.unpack(PACK))
+					@guid, @offset = str.unpack PACK
 					self.guid = Clsid.load guid
-					@map = DATA[guid] ? DATA[guid][1] : nil
 					load_header
 				end
 
@@ -60,51 +63,46 @@ module Ole
 					io.seek offset
 					@byte_size, @length = io.read(8).unpack 'V2'
 				end
-
-				def each
-					io.seek offset + 8
-					io.read(length * 8).scan(/.{8}/m).each do |str|
-						id, property_offset = str.unpack 'V2'
-						io.seek offset + property_offset
-						type, value = io.read(8).unpack('V2')
-						# is the method of serialization here custom?
-						case type
-						when VT_LPSTR, VT_LPWSTR
-							value = Variant.load type, io.read(value)
-						# ....
-						end
-						yield id, type, value
-					end
-					self
-				end
-
+				
 				def [] key
-					unless Integer === key
-						return unless @map and key = @map.invert[key]
+					each_raw do |id, property_offset|
+						return read_property(property_offset).last if key == id
 					end
-					return unless result = properties.assoc(key)
-					result.last
+					nil
 				end
-
-				def method_missing name, *args
-					if args.empty? and @map and @map.values.include? name.to_s
-						self[name.to_s]
-					else
-						super
+				
+				def []= key, value
+					raise NotImplementedError, 'section writes not yet implemented'
+				end
+				
+				def each
+					each_raw do |id, property_offset|
+						yield id, read_property(property_offset).last
 					end
 				end
 
-				def properties
-					@properties ||= to_enum.to_a
-				end
+			private
 
-				#def to_h
-				#	properties.inject({}) do |hash, (key, type, value)|
-				#		hash.update 
-				#end
+				def each_raw
+					io.seek offset + 8
+					io.read(length * 8).scan(/.{8}/m).each { |str| yield(*str.unpack('V2')) }
+				end
+				
+				def read_property property_offset
+					io.seek offset + property_offset
+					type, value = io.read(8).unpack('V2')
+					# is the method of serialization here custom?
+					case type
+					when VT_LPSTR, VT_LPWSTR
+						value = Variant.load type, io.read(value)
+					# ....
+					end
+					[type, value]
+				end
 			end
-
+						
 			attr_reader :io, :signature, :unknown, :os, :guid, :sections
+			
 			def initialize io
 				@io = io
 				load_header io.read(HEADER_SIZE)
@@ -123,50 +121,39 @@ module Ole
 			def load_section_list str
 				@sections = str.scan(/.{#{Section::SIZE}}/m).map { |s| Section.new s, self }
 			end
-		end
-	end
-	
-	class Storage
-		# i'm thinking - search for a property set in +filenames+ containing a
-		# section with guid +guid+. then yield it. can read/write to it in the
-		# block.
-		# propsets themselves can have guids, but they are often all null.
-		def with_property_set guid, filenames=nil
-		end
-
-		class PropertySetSectionProxy
-			attr_reader :obj, :section_num
-			def initialize obj, section_num
-				@obj, @section_num = obj, section_num
+			
+			def [] key
+				pair = PROPERTY_MAP[key.to_s] or return nil
+				section = @sections.find { |s| s.guid == pair.first } or return nil
+				section[pair.last]
+			end
+			
+			def []= key, value
+				pair = PROPERTY_MAP[key.to_s] or return nil
+				section = @sections.find { |s| s.guid == pair.first } or return nil
+				section[pair.last] = value
 			end
 			
 			def method_missing name, *args, &block
-				obj.open do |io|
-					section = Types::PropertySet.new(io).sections[section_num]
-					section.send name, *args, &block
+				return super unless args.empty?
+				pair = PROPERTY_MAP[name.to_s] or return super
+				self[name]
+			end
+			
+			def each
+				@sections.each do |section|
+					next unless pair = DATA[section.guid]
+					map = pair.last
+					section.each do |id, value|
+						name = map[id] or next
+						yield name, value
+					end
 				end
 			end
-		end
-
-		# this will be changed to use with_property_set
-		def summary_information
-			dirent = root["\005SummaryInformation"]
-			dirent.open do |io|
-				propset = Types::PropertySet.new(io)
-				sections = propset.sections
-				# this will maybe get wrapped up as
-				# section = propset[guid]
-				# maybe taking it one step further, i'd hide the section thing,
-				# and let you use composite keys, like
-				# propset[4, guid] eg in MAPI, and just propset.doc_author.
-				section = sections.find do |s|
-					s.guid == Types::PropertySet::FMTID_SummaryInformation
-				end
-				return PropertySetSectionProxy.new(dirent, sections.index(section))
+			
+			def to_h
+				inject({}) { |hash, (name, value)| hash.update name.to_sym => value }
 			end
 		end
-		
-		alias summary_info :summary_information
 	end
 end
-
