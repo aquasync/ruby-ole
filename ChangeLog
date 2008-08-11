@@ -1,3 +1,14 @@
+== 1.2.7 / ...
+
+- Prepare Ole::Types::PropertySet for write support.
+- Introduce Ole::Storage#meta_data as an easy interface to meta data stored
+  within various property sets.
+- Add new --metadata action to oletool to dump said metadata.
+- Add new --mimetype action to oletool, and corresponding Ole::Storage#mime_type
+  function to try to guess mime type of a file based on some simple heuristics.
+- Restructure project files a bit, and pull in file_system & meta_data support
+  by default.
+
 == 1.2.6 / 2008-07-21
 
 - Fix FileClass#expand_path to work properly on darwin (issue #2)
