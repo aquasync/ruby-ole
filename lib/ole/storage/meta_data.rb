@@ -63,7 +63,7 @@ module Ole
 			# #[], #each, and #to_h also, as calculated meta data (not assignable)
 			
 			def comp_obj
-				return unless dirent = @ole.root["\001CompObj"]
+				return {} unless dirent = @ole.root["\001CompObj"]
 				data = dirent.read
 				# see - https://gnunet.org/svn/Extractor/doc/StarWrite_File_Format.html
 				# compobj_version: 0x0001
@@ -99,7 +99,7 @@ module Ole
 				return MIME_TYPES[type] if type
 
 				# fallback to heuristics
-				has_file = Hash[*root.children.map { |d| [d.name.downcase, true] }.flatten]
+				has_file = Hash[*@ole.root.children.map { |d| [d.name.downcase, true] }.flatten]
 				return MIME_TYPES[:msg] if has_file['__nameid_version1.0'] or has_file['__properties_version1.0']
 				return MIME_TYPES[:doc] if has_file['worddocument'] or has_file['document']
 				return MIME_TYPES[:xls] if has_file['workbook'] or has_file['book']

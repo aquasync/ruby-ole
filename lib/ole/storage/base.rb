@@ -235,8 +235,7 @@ module Ole # :nodoc:
 			# this is perhaps not good, as we reclaim all bat blocks here, which
 			# may include the sbat we just wrote. FIXME
 			@bbat.map! do |b|
-				b == AllocationTable::BAT || b == AllocationTable::META_BAT ?
-					AllocationTable::AVAIL : b
+				b == AllocationTable::BAT || b == AllocationTable::META_BAT ? AllocationTable::AVAIL : b
 			end
 	
 			# currently we use a loop. this could be better, but basically,

@@ -41,10 +41,6 @@ class TestStorageRead < Test::Unit::TestCase
 		@ole.close
 	end
 
-	def test_invalid
-		assert_raises(Ole::Storage::FormatError) { Ole::Storage.open StringIO.new(0.chr * 1024) }
-	end
-
 	def test_header
 		# should have further header tests, testing the validation etc.
 		assert_equal 17,  @ole.header.to_a.length
@@ -52,6 +48,60 @@ class TestStorageRead < Test::Unit::TestCase
 		assert_equal 1,   @ole.header.num_bat
 		assert_equal 1,   @ole.header.num_sbat
 		assert_equal 0,   @ole.header.num_mbat
+	end
+	
+	def test_new_without_explicit_mode
+		open "#{TEST_DIR}/test_word_6.doc", 'rb' do |f|
+			assert_equal false, Ole::Storage.new(f).writeable
+		end
+	end
+
+	def capture_warnings
+		@warn = []
+		outer_warn = @warn
+		old_log = Ole::Log
+		begin
+			old_verbose = $VERBOSE
+			begin
+				$VERBOSE = nil
+				Ole.const_set :Log, Object.new
+			ensure
+				$VERBOSE = old_verbose
+			end
+			(class << Ole::Log; self; end).send :define_method, :warn do |message|
+				outer_warn << message
+			end
+			yield
+		ensure
+			old_verbose = $VERBOSE
+			begin
+				$VERBOSE = nil
+				Ole.const_set :Log, Object.new
+			ensure
+				$VERBOSE = old_verbose
+			end
+		end
+	end
+
+	def test_invalid
+		assert_raises Ole::Storage::FormatError do
+			Ole::Storage.open StringIO.new(0.chr * 1024)
+		end
+		assert_raises Ole::Storage::FormatError do
+			Ole::Storage.open StringIO.new(Ole::Storage::Header::MAGIC + 0.chr * 1024)
+		end
+		capture_warnings do
+			head = Ole::Storage::Header.new
+			head.threshold = 1024
+			assert_raises NoMethodError do
+				Ole::Storage.open StringIO.new(head.to_s + 0.chr * 1024)
+			end
+		end
+		assert_equal ['may not be a valid OLE2 structured storage file'], @warn
+	end
+	
+	def test_inspect
+		assert_match(/#<Ole::Storage io=#<File:.*?test_word_6.doc> root=#<Dirent:"Root Entry">>/, @ole.inspect)
 	end
 
 	def test_fat
@@ -120,6 +170,16 @@ class TestStorageRead < Test::Unit::TestCase
 		# i was actually not loading data correctly before, so carefully check everything here
 		assert_equal expect, @ole.root.children.map { |child| child.read }
 	end
+	
+	def test_dirent
+		dirent = @ole.root.children.first
+		assert_equal '#<Dirent:"\001Ole" size=20 data="\001\000\000\002\000...">', dirent.inspect
+		# exercise Dirent#[]. note that if you use a number, you get the Struct
+		# fields.
+		assert_equal dirent, @ole.root["\001Ole"]
+		assert_equal dirent.name_utf16, dirent[0]
+		assert_equal nil, @ole.root.time
+	end
 end
 
 class TestStorageWrite < Test::Unit::TestCase
@@ -157,6 +217,13 @@ class TestStorageWrite < Test::Unit::TestCase
 		Ole::Storage.open io, :update_timestamps => false, &:repack
 		# note equivalence to the above flush, repack, flush
 		assert_equal 'c8bb9ccacf0aaad33677e1b2a661ee6e66a48b5a', sha1(io.string)
+		# lets do it again using memory backing
+		Ole::Storage.open(io, :update_timestamps => false) { |ole| ole.repack :mem }
+		# note equivalence to the above flush, repack, flush
+		assert_equal 'c8bb9ccacf0aaad33677e1b2a661ee6e66a48b5a', sha1(io.string)
+		assert_raises ArgumentError do
+			Ole::Storage.open(io, :update_timestamps => false) { |ole| ole.repack :typo }
+		end
 	end
 
 	def test_create_from_scratch_hash

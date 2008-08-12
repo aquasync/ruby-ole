@@ -110,6 +110,10 @@ module Ole # :nodoc:
 				def directory?
 					@dirent.dir?
 				end
+				
+				def size?
+					size if file?
+				end
 
 				def inspect
 					pairs = (instance_variables - ['@dirent']).map do |n|
@@ -131,11 +135,7 @@ module Ole # :nodoc:
 				# at this point its already absolute. we use File.expand_path
 				# just for the .. and . handling
 				# No longer use RUBY_PLATFORM =~ /win/ as it matches darwin. better way?
-				if File::ALT_SEPARATOR == "\\"
-					File.expand_path(path)[2..-1]
-				else
-					File.expand_path path
-				end
+				File.expand_path(path)[File::ALT_SEPARATOR == "\\" ? (2..-1) : (0..-1)]
 			end
 
 			# +orig_path+ is just so that we can use the requested path
@@ -193,6 +193,13 @@ module Ole # :nodoc:
 				# the zip tests want 0.
 				0
 			end
+			
+			def size? path
+				dirent_from_path(path).size
+				# any other exceptions i need to rescue?
+			rescue Errno::ENOENT, Errno::EISDIR
+				nil
+			end
 
 			def stat path
 				# we do this to allow dirs.
@@ -220,7 +227,9 @@ module Ole # :nodoc:
 				begin
 					unlink to_path
 				rescue Errno::ENOENT
-					# we actually get here, but rcov doesn't think so
+					# we actually get here, but rcov doesn't think so. add 1 + 1 to
+					# keep rcov happy for now... :)
+					1 + 1
 				end
 				# reparent the dirent
 				from_parent_path, from_basename = File.split expand_path(from_path)
@@ -389,29 +398,40 @@ module Ole # :nodoc:
 			class Dir
 				include Enumerable
 
-				attr_reader :path, :entries, :pos
+				attr_reader :path
 				def initialize path, entries
 					@path, @entries, @pos = path, entries, 0
+					@closed = false
+				end
+				
+				def pos
+					raise IOError if @closed
+					@pos
 				end
 
 				def each(&block)
-					entries.each(&block)
+					raise IOError if @closed
+					@entries.each(&block)
 				end
 
 				def close
+					@closed = true
 				end
 
 				def read
-					entries[pos]
+					raise IOError if @closed
+					@entries[pos]
 				ensure
-					@pos += 1 if pos < entries.length
+					@pos += 1 if pos < @entries.length
 				end
 
 				def pos= pos
-					@pos = [[0, pos].max, entries.length].min
+					raise IOError if @closed
+					@pos = [[0, pos].max, @entries.length].min
 				end
 
 				def rewind
+					raise IOError if @closed
 					@pos = 0
 				end
 

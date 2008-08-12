@@ -1,4 +1,4 @@
-== 1.2.7 / ...
+== 1.2.7 / 2008-08-12
 
 - Prepare Ole::Types::PropertySet for write support.
 - Introduce Ole::Storage#meta_data as an easy interface to meta data stored

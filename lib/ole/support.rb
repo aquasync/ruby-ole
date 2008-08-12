@@ -99,6 +99,8 @@ module RecursivelyEnumerable
 		end
 	end
 
+	# don't think this is actually a proper breadth first recursion. only first
+	# level is breadth first.
 	def each_recursive_breadth_first(&block)
 		children = []
 		each_child do |child|
@@ -131,37 +133,28 @@ module RecursivelyEnumerable
 	# streams a "tree" form of the recursively enumerable structure to +io+, or
 	# return a string form instead if +io+ is not specified.
 	#
-	# mostly a debugging aid. can specify a different +method+ to call if desired,
-	# though it should return a single line string.
-	def to_tree io=nil, method=:inspect
-		unless io
-			to_tree io = StringIO.new
-			return io.string
-		end
-		io << "- #{send method}\n"
-		to_tree_helper io, method, '  '
-	end
-
-	def to_tree_helper io, method, prefix
-		# i need to know when i get to the last child. use delay to know
-		child = nil
-		each_child do |next_child|
-			if child
-				io << "#{prefix}|- #{child.send method}\n"
-				if child.respond_to? :to_tree_helper
-					child.to_tree_helper io, method, prefix + '|  '
+	# mostly a debugging aid. can specify a different block which will be called
+	# to provide the string form for each node.
+	def to_tree io='', &inspect
+		inspect ||= :inspect.to_proc
+		io << "- #{inspect[self]}\n"
+		recurse = proc do |node, prefix|
+			child = nil
+			node.each_child do |next_child|
+				if child
+					io << "#{prefix}|- #{inspect[child]}\n"
+					recurse.call child, prefix + '|  '
 				end
+				child = next_child
+			end if node.respond_to?(:each_child)
+			if child
+				io << "#{prefix}\\- #{inspect[child]}\n"
+				recurse.call child, prefix + '   '
 			end
-			child = next_child
 		end
-		return unless child
-		# child is the last child
-		io << "#{prefix}\\- #{child.send method}\n"
-		if child.respond_to? :to_tree_helper
-			child.to_tree_helper io, method, prefix + '   '
-		end
+		recurse.call self, '  '
+		io
 	end
-	protected :to_tree_helper
 end
 
 # can include File::Constants

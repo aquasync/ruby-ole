@@ -146,7 +146,6 @@ class OleFsNonmutatingTest < Test::Unit::TestCase
 		assert_equal(0, @ole.file.stat("dir2/dir21").size)
 	end
 
-=begin
 	def test_size?
 		assert_equal(nil, @ole.file.size?("notAFile"))
 		assert_equal(72, @ole.file.size?("file1"))
@@ -155,7 +154,6 @@ class OleFsNonmutatingTest < Test::Unit::TestCase
 		assert_equal(72, @ole.file.stat("file1").size?)
 		assert_equal(nil, @ole.file.stat("dir2/dir21").size?)
 	end
-=end
 
 	def test_file?
 		assert(@ole.file.file?("file1"))
@@ -563,6 +561,14 @@ class OleFsFileStatTest < Test::Unit::TestCase
 		assert_equal(64, @ole.file.stat("file1").blksize)
 	end
 
+	# an additional test i added for coverage. i've tried to make the inspect
+	# string on the ole stat match that of the regular one.
+	def test_inspect
+		expect = '#<Ole::Storage::FileClass::Stat ino=0, uid=0, size=72, rdev=0, nlink=1, dev=0, blocks=2, gid=0, ftype=file, blksize=64>'
+		# normalize them, as instance_variables order is undefined
+		normalize = proc { |s| s[/ (.*)>$/, 1].split(', ').sort.join(', ') }
+		assert_equal normalize[expect], normalize[@ole.file.stat('file1').inspect]
+	end
 end
 
 class OleFsFileMutatingTest < Test::Unit::TestCase
@@ -659,7 +665,7 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 
 end
 
-class ZipFsDirectoryTest < Test::Unit::TestCase
+class OleFsDirectoryTest < Test::Unit::TestCase
 	def setup
 		# we use an in memory copy of the file instead of the original
 		# file based.
@@ -807,13 +813,12 @@ class ZipFsDirectoryTest < Test::Unit::TestCase
 
 end
 
-=begin
-class ZipFsDirIteratorTest < Test::Unit::TestCase
+class OleFsDirIteratorTest < Test::Unit::TestCase
 	
 	FILENAME_ARRAY = [ "f1", "f2", "f3", "f4", "f5", "f6"  ]
 
 	def setup
-		@dirIt = ZipFileSystem::ZipFsDirIterator.new(FILENAME_ARRAY)
+		@dirIt = Ole::Storage::DirClass::Dir.new('/', FILENAME_ARRAY)
 	end
 
 	def test_close
@@ -872,4 +877,3 @@ end
 # Copyright (C) 2002, 2003 Thomas Sondergaard
 # rubyzip is free software; you can redistribute it and/or
 # modify it under the terms of the ruby license.
-=end

@@ -135,9 +135,15 @@ module Ole
 			end
 			
 			def method_missing name, *args, &block
-				return super unless args.empty?
-				pair = PROPERTY_MAP[name.to_s] or return super
-				self[name]
+				if name.to_s =~ /(.*)=$/
+					return super unless args.length == 1
+					return super unless PROPERTY_MAP[$1]
+					self[$1] = args.first
+				else
+					return super unless args.length == 0
+					return super unless PROPERTY_MAP[name.to_s]
+					self[name]
+				end
 			end
 			
 			def each

@@ -4,10 +4,8 @@ $: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
 require 'ole/types/property_set'
-require 'ole/storage/base'
-require 'ole/storage/meta_data'
 
-class TestTypes < Test::Unit::TestCase
+class TestPropertySet < Test::Unit::TestCase
 	include Ole::Types
 
 	def setup
@@ -27,16 +25,16 @@ class TestTypes < Test::Unit::TestCase
 		assert_equal 'f29f85e0-4ff9-1068-ab91-08002b27b3d9', section.guid.format
 		assert_equal PropertySet::FMTID_SummaryInformation, section.guid
 		assert_equal 'Charles Lowe', section.to_a.assoc(4).last
-		# new named support
 		assert_equal 'Charles Lowe', propset.doc_author
-	end
+		assert_equal 'Charles Lowe', propset.to_h[:doc_author]
 
-	# should be expanded, and moved to test_meta_data.rb
-	def test_ole_storage_integration
-		Ole::Storage.open File.dirname(__FILE__) + '/test.doc', 'rb' do |ole|
-			assert_equal 'Charles Lowe', ole.meta_data.doc_author
-			assert_equal 'Title', ole.meta_data.doc_title
-		end
+		# knows the difference between existent and non-existent properties
+		assert_raise(NoMethodError) { propset.non_existent_key }
+		assert_raise(NotImplementedError) { propset.doc_author = 'New Author'}
+		assert_raise(NoMethodError) { propset.non_existent_key = 'Value'}
+		
+		# a valid property that has no value in this property set
+		assert_equal nil, propset.security
 	end
 end
 

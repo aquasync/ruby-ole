@@ -96,5 +96,15 @@ class TestRangesIO < Test::Unit::TestCase
 		# write enough to overflow the file
 		assert_raises(IOError) { @io.write 'x' * 60 }
 	end
+	
+	def test_non_resizeable
+		# will try to truncate, which will fail
+		assert_raises NotImplementedError do
+			@io = RangesIO.new(StringIO.new, 'w', :ranges => [])
+		end
+		# will be fine
+		@io = RangesIONonResizeable.new(StringIO.new, 'w', :ranges => [])
+		assert_equal '#<IO::Mode wronly|creat>', @io.instance_variable_get(:@mode).inspect
+	end
 end
 
