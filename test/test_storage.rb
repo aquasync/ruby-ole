@@ -170,15 +170,35 @@ class TestStorageRead < Test::Unit::TestCase
 		# i was actually not loading data correctly before, so carefully check everything here
 		assert_equal expect, @ole.root.children.map { |child| child.read }
 	end
-	
+
 	def test_dirent
 		dirent = @ole.root.children.first
 		assert_equal '#<Dirent:"\001Ole" size=20 data="\001\000\000\002\000...">', dirent.inspect
+		assert_equal '#<Dirent:"Root Entry">', @ole.root.inspect
+		
 		# exercise Dirent#[]. note that if you use a number, you get the Struct
 		# fields.
 		assert_equal dirent, @ole.root["\001Ole"]
 		assert_equal dirent.name_utf16, dirent[0]
 		assert_equal nil, @ole.root.time
+		
+		assert_equal @ole.root.children, @ole.root.to_enum(:each_child).to_a
+
+		dirent.open('r') { |f| assert_equal 2, f.first_block }
+		dirent.open('w') { |f| }
+		assert_raises Errno::EINVAL do
+			dirent.open('a') { |f| }
+		end
+	end
+
+	def test_delete
+		dirent = @ole.root.children.first
+		assert_raises(ArgumentError) { @ole.root.delete nil }
+		assert_equal [dirent], @ole.root.children & [dirent]
+		assert_equal 20, dirent.size
+		@ole.root.delete dirent
+		assert_equal [], @ole.root.children & [dirent]
+		assert_equal 0, dirent.size
 	end
 end
 

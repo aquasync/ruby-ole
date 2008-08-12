@@ -8,6 +8,7 @@
   function to try to guess mime type of a file based on some simple heuristics.
 - Restructure project files a bit, and pull in file_system & meta_data support
   by default.
+- More tests - now have 100% coverage.
 
 == 1.2.6 / 2008-07-21
 

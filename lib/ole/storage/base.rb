@@ -802,9 +802,9 @@ module Ole # :nodoc:
 					@modify_time = Time.now if mode == 'r+'
 				when 'w'
 					@modify_time = Time.now
-					#io.truncate 0
-				else
-					raise NotImplementedError, "unsupported mode - #{mode.inspect}"
+				#	io.truncate 0
+				#else
+				#	raise NotImplementedError, "unsupported mode - #{mode.inspect}"
 				end
 				if block_given?
 					begin   yield io
@@ -906,14 +906,14 @@ module Ole # :nodoc:
 			def inspect
 				str = "#<Dirent:#{name.inspect}"
 				# perhaps i should remove the data snippet. its not that useful anymore.
+				# there is also some dir specific stuff. like clsid, flags, that i should
+				# probably include
 				if file?
 					tmp = read 9
 					data = tmp.length == 9 ? tmp[0, 5] + '...' : tmp
 					str << " size=#{size}" +
 						"#{modify_time ? ' modify_time=' + modify_time.to_s.inspect : nil}" +
 						" data=#{data.inspect}"
-				else
-					# there is some dir specific stuff. like clsid, flags.
 				end
 				str + '>'
 			end
