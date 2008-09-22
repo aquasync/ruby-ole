@@ -32,7 +32,7 @@ class TestMetaData < Test::Unit::TestCase
 		
 		ole.root.clsid = 0.chr * Ole::Types::Clsid::SIZE
 		assert_equal nil, ole.meta_data.file_format
-		assert_equal nil, ole.meta_data.mime_type
+		assert_equal 'application/x-ole-storage', ole.meta_data.mime_type
 		
 		ole.file.open('Book', 'w') { |f| }
 		assert_equal 'application/vnd.ms-excel', ole.meta_data.mime_type
