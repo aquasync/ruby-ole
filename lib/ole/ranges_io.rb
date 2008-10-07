@@ -217,8 +217,9 @@ end
 # this subclass of ranges io explicitly ignores the truncate part of 'w' modes.
 # only really needed for the allocation table writes etc. maybe just use explicit modes
 # for those
-# better yet write a test that breaks before I fix it.
-class RangesIONonResizeable < RangesIO
+# better yet write a test that breaks before I fix it. added nodoc for the 
+# time being.
+class RangesIONonResizeable < RangesIO # :nodoc:
 	def initialize io, mode='r', params={}
 		mode, params = 'r', mode if Hash === mode
 		flags = IO::Mode.new(mode).flags & ~IO::TRUNC

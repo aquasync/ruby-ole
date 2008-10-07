@@ -89,7 +89,7 @@ end
 # breadth first iteration holds its own copy of the children around.
 #
 # Main methods are #recursive, and #to_tree
-module RecursivelyEnumerable
+module RecursivelyEnumerable # :nodoc:
 	def each_recursive_depth_first(&block)
 		each_child do |child|
 			yield child

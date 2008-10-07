@@ -173,7 +173,8 @@ class TestStorageRead < Test::Unit::TestCase
 
 	def test_dirent
 		dirent = @ole.root.children.first
-		assert_equal '#<Dirent:"\001Ole" size=20 data="\001\000\000\002\000...">', dirent.inspect
+		assert_equal "\001Ole", dirent.name
+		assert_equal 20, dirent.size
 		assert_equal '#<Dirent:"Root Entry">', @ole.root.inspect
 		
 		# exercise Dirent#[]. note that if you use a number, you get the Struct

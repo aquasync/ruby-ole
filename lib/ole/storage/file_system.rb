@@ -3,32 +3,11 @@
 #
 # This file intends to provide file system-like api support, a la <tt>zip/zipfilesystem</tt>.
 #
-# Ideally, this will be the recommended interface, allowing Ole::Storage, Dir, and
-# Zip::ZipFile to be used exchangably. It should be possible to write recursive copy using
-# the plain api, such that you can copy dirs/files agnostically between any of ole docs, dirs,
-# and zip files.
-#
-# = Usage
-#
-# Currently you can do something like the following:
-#
-#   Ole::Storage.open 'test.doc' do |ole|
-#     ole.dir.entries '/'         # => [".", "..", "\001Ole", "1Table", "\001CompObj", ...]
-#     ole.file.read "\001CompObj" # => "\001\000\376\377\003\n\000\000\377\377..."
-#   end
-#
-# = Notes
-#
-# <tt>Ole::Storage</tt> files can have multiple files with the same name,
-# or with / in the name, and other things that are probably invalid anyway.
-# This API is unable to access those files, but of course the core, low-
-# level API can.
-#
-# need to implement some more IO functions on RangesIO, like #puts, #print
-# etc, like AbstractOutputStream from zipfile.
-#
 # = TODO
 # 
+# - need to implement some more IO functions on RangesIO, like #puts, #print
+#   etc, like AbstractOutputStream from zipfile.
+#
 # - check Dir.mkdir, and File.open, and File.rename, to add in filename 
 #   length checks (max 32 / 31 or something).
 #   do the automatic truncation, and add in any necessary warnings.

@@ -5,54 +5,8 @@ require 'ole/types'
 require 'ole/ranges_io'
 
 module Ole # :nodoc:
-	# 
-	# = Introduction
 	#
-	# <tt>Ole::Storage</tt> is a class intended to abstract away details of the
-	# access to OLE2 structured storage files, such as those produced by
-	# Microsoft Office, eg *.doc, *.msg etc.
-	#
-	# = Usage
-	#
-	# Usage should be fairly straight forward:
-	#
-	#   # get the parent ole storage object
-	#   ole = Ole::Storage.open 'myfile.msg', 'r+'
-	#   # => #<Ole::Storage io=#<File:myfile.msg> root=#<Dirent:"Root Entry">>
-	#   # read some data
-	#   ole.root[1].read 4
-	#   # => "\001\000\376\377"
-	#   # get the top level root object and output a tree structure for
-	#   # debugging
-	#   puts ole.root.to_tree
-	#   # =>
-	#   - #<Dirent:"Root Entry" size=3840 time="2006-11-03T00:52:53Z">
-	#     |- #<Dirent:"__nameid_version1.0" size=0 time="2006-11-03T00:52:53Z">
-	#     |  |- #<Dirent:"__substg1.0_00020102" size=16 data="CCAGAAAAAADAAA...">
-	#     ...
-	#     |- #<Dirent:"__substg1.0_8002001E" size=4 data="MTEuMA==">
-	#     |- #<Dirent:"__properties_version1.0" size=800 data="AAAAAAAAAAABAA...">
-	#     \- #<Dirent:"__recip_version1.0_#00000000" size=0 time="2006-11-03T00:52:53Z">
-	#        |- #<Dirent:"__substg1.0_0FF60102" size=4 data="AAAAAA==">
-	#   	 ...
-	#   # write some data, and finish up (note that open is 'r+', so this overwrites
-	#   # but doesn't truncate)
-	#   ole.root["\001CompObj"].open { |f| f.write "blah blah" }
-	#   ole.close
-	#
-	# = Thanks
-	#
-	# * The code contained in this project was initially based on chicago's libole
-	#   (source available at http://prdownloads.sf.net/chicago/ole.tgz).
-	#
-	# * It was later augmented with some corrections by inspecting pole, and (purely
-	#   for header definitions) gsf.
-	#
-	# * The property set parsing code came from the apache java project POIFS.
-	#
-	# * The excellent idea for using a pseudo file system style interface by providing
-	#   #file and #dir methods which mimic File and Dir, was borrowed (along with almost
-	#   unchanged tests!) from Thomas Sondergaard's rubyzip.
+	# This class is the primary way the user interacts with an OLE storage file.
 	#
 	# = TODO
 	#
@@ -67,7 +21,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.7'
+		VERSION = '1.2.8'
 
 		# options used at creation time
 		attr_reader :params
@@ -81,8 +35,8 @@ module Ole # :nodoc:
 		# Low level internals, you probably shouldn't need to mess with these
 		attr_reader :header, :bbat, :sbat, :sb_file
 
-		# maybe include an option hash, and allow :close_parent => true, to be more general.
-		# +arg+ should be either a file, or an +IO+ object, and needs to be seekable.
+		# +arg+ should be either a filename, or an +IO+ object, and needs to be seekable.
+		# +mode+ is optional, and should be a regular mode string.
 		def initialize arg, mode=nil, params={}
 			params, mode = mode, nil if Hash === mode
 			params = {:update_timestamps => true}.merge(params)
@@ -118,6 +72,8 @@ module Ole # :nodoc:
 			@io.size > 0 ? load : clear
 		end
 
+		# somewhat similar to File.open, the open class method allows a block form where
+		# the Ole::Storage object is automatically closed on completion of the block.
 		def self.open arg, mode=nil, params={}
 			ole = new arg, mode, params
 			if block_given?
@@ -150,8 +106,13 @@ module Ole # :nodoc:
 
 			# create an empty bbat.
 			@bbat = AllocationTable::Big.new self
-			mbat_blocks = (0...@header.num_mbat).map { |i| i + @header.mbat_start }
-			bbat_chain = (header_block[Header::SIZE..-1] + @bbat.read(mbat_blocks)).unpack 'V*'
+			bbat_chain = header_block[Header::SIZE..-1].unpack 'V*'
+			mbat_block = @header.mbat_start
+			@header.num_mbat.times do
+				blocks = @bbat.read([mbat_block]).unpack 'V*'
+				mbat_block = blocks.pop
+				bbat_chain += blocks
+			end
 			# am i using num_bat in the right way?
 			@bbat.load @bbat.read(bbat_chain[0, @header.num_bat])
 	
@@ -268,7 +229,7 @@ module Ole # :nodoc:
 				# mbat must remain contiguous.
 				bbat_data_len = ((@bbat.length + num_mbat_blocks) * 4 / @bbat.block_size.to_f).ceil * @bbat.block_size
 				# now storing the excess mbat blocks also increases the size of the bbat:
-				new_num_mbat_blocks = ([bbat_data_len / @bbat.block_size - 109, 0].max * 4 / @bbat.block_size.to_f).ceil
+				new_num_mbat_blocks = ([bbat_data_len / @bbat.block_size - 109, 0].max * 4 / (@bbat.block_size.to_f - 4)).ceil
 				if new_num_mbat_blocks != num_mbat_blocks
 					# need more space for the mbat.
 					num_mbat_blocks = new_num_mbat_blocks
@@ -284,13 +245,16 @@ module Ole # :nodoc:
 			# now extract the info we want:
 			ranges = io.ranges
 			bbat_chain = @bbat.chain io.first_block
-			# the extra mbat data is a set of contiguous blocks at the end
 			io.close
 			bbat_chain.each { |b| @bbat[b] = AllocationTable::BAT }
 			# tack on the mbat stuff
-			@header.mbat_start = @bbat.length # need to record this here before tacking on the mbat
 			@header.num_bat = bbat_chain.length
-			num_mbat_blocks.times { @bbat << AllocationTable::META_BAT }
+			mbat_blocks = (0...num_mbat_blocks).map do
+				block = @bbat.free_block
+				@bbat[block] = AllocationTable::META_BAT
+				block
+			end
+			@header.mbat_start = mbat_blocks.first || AllocationTable::EOC
 
 			# now finally write the bbat, using a not resizable io.
 			# the mode here will be 'r', which allows write atm. 
@@ -299,15 +263,17 @@ module Ole # :nodoc:
 			# this is the mbat. pad it out.
 			bbat_chain += [AllocationTable::AVAIL] * [109 - bbat_chain.length, 0].max
 			@header.num_mbat = num_mbat_blocks
-			if num_mbat_blocks == 0
-				@header.mbat_start = AllocationTable::EOC
-			else
+			if num_mbat_blocks != 0
 				# write out the mbat blocks now. first of all, where are they going to be?
 				mbat_data = bbat_chain[109..-1]
-				q = @bbat.block_size / 4
-				mbat_data += [AllocationTable::AVAIL] *((mbat_data.length / q.to_f).ceil * q - mbat_data.length)
-				ranges = @bbat.ranges((0...num_mbat_blocks).map { |i| @header.mbat_start + i })
-				RangesIO.open(@io, :ranges => ranges) { |f| f.write mbat_data.pack('V*') }
+				# expand the mbat_data to include the linked list forward pointers.
+				mbat_data = mbat_data.to_enum(:each_slice, @bbat.block_size / 4 - 1).to_a.
+					zip(mbat_blocks[1..-1] + [nil]).map { |a, b| b ? a + [b] : a }
+				# pad out the last one.
+				mbat_data.last.push(*([AllocationTable::AVAIL] * (@bbat.block_size / 4 - mbat_data.last.length)))
+				RangesIO.open @io, :ranges => @bbat.ranges(mbat_blocks) do |f|
+					f.write mbat_data.flatten.pack('V*')
+				end
 			end
 
 			# now seek back and write the header out
@@ -561,7 +527,7 @@ module Ole # :nodoc:
 				length - 1
 			end
 
-			# must return first_block
+			# must return first_block. modifies +blocks+ in place
 			def resize_chain blocks, size
 				new_num_blocks = (size / block_size.to_f).ceil
 				old_num_blocks = blocks.length
