@@ -85,7 +85,7 @@ module Ole
 
 				def each_raw
 					io.seek offset + 8
-					io.read(length * 8).scan(/.{8}/m).each { |str| yield(*str.unpack('V2')) }
+					io.read(length * 8).each_chunk(8) { |str| yield(*str.unpack('V2')) }
 				end
 				
 				def read_property property_offset
@@ -119,7 +119,7 @@ module Ole
 			end
 
 			def load_section_list str
-				@sections = str.scan(/.{#{Section::SIZE}}/m).map { |s| Section.new s, self }
+				@sections = str.to_enum(:each_chunk, Section::SIZE).map { |s| Section.new s, self }
 			end
 			
 			def [] key

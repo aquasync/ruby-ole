@@ -166,7 +166,7 @@ class TestStorageRead < Test::Unit::TestCase
 
 		# test the ole storage type
 		type = 'Microsoft Word 6.0-Dokument'
-		assert_equal type, (@ole.root/"\001CompObj").read[/^.{32}([^\x00]+)/m, 1]
+		assert_equal type, (@ole.root/"\001CompObj").read[32..-1][/([^\x00]+)/m, 1]
 		# i was actually not loading data correctly before, so carefully check everything here
 		assert_equal expect, @ole.root.children.map { |child| child.read }
 	end

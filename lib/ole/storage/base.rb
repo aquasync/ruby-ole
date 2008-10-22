@@ -118,7 +118,7 @@ module Ole # :nodoc:
 	
 			# get block chain for directories, read it, then split it into chunks and load the
 			# directory entries. semantics changed - used to cut at first dir where dir.type == 0
-			@dirents = @bbat.read(@header.dirent_start).scan(/.{#{Dirent::SIZE}}/mo).
+			@dirents = @bbat.read(@header.dirent_start).to_enum(:each_chunk, Dirent::SIZE).
 				map { |str| Dirent.new self, str }.reject { |d| d.type_id == 0 }
 
 			# now reorder from flat into a tree

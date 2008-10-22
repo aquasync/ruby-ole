@@ -1,3 +1,7 @@
+== 1.2.8.1 / 2008-10-22
+
+- Fix a couple of breakages when using $KCODE = 'UTF8'
+
 == 1.2.8 / 2008-10-08
 
 - Check in the new fixes to the mbat support.

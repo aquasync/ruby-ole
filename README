@@ -92,6 +92,9 @@ See the documentation for each class for more details.
 * make ranges io obey readable vs writeable modes.
 * more RangesIO completion. ie, doesn't support #<< at the moment.
 * maybe some oletool doc.
+* make sure `rake test' runs tests both with $KCODE='UTF8', and without,
+  and maybe ensure i don't regress on 1.9 and jruby either now that they're
+  fixed.
 
 == 1.3.1
 
