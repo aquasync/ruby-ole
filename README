@@ -91,6 +91,7 @@ See the documentation for each class for more details.
   'a+' modes etc. done?
 * make ranges io obey readable vs writeable modes.
 * more RangesIO completion. ie, doesn't support #<< at the moment.
+* maybe some oletool doc.
 
 == 1.3.1
 
@@ -99,6 +100,7 @@ See the documentation for each class for more details.
 * case insensitive mode for ole/file_system?
 * better tests for mbat support.
 * further doc cleanup
+* add in place testing for jruby and ruby1.9
 
 == Longer term
 
