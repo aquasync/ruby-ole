@@ -38,7 +38,7 @@ end
 Rake::RDocTask.new do |t|
 	t.rdoc_dir = 'doc'
 	t.rdoc_files.include 'lib/**/*.rb'
-	t.rdoc_files.include 'README'
+	t.rdoc_files.include 'README', 'ChangeLog'
 	t.title    = "#{PKG_NAME} documentation"
 	t.options += %w[--line-numbers --inline-source --tab-width 2]
 	t.main	   = 'README'
