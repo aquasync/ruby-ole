@@ -192,6 +192,8 @@ class RangesIO
 		end
 		data_pos
 	end
+	
+	alias << write
 
 	# i can wrap it in a buffered io stream that
 	# provides gets, and appropriately handle pos,
