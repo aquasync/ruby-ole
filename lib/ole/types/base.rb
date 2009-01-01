@@ -46,7 +46,11 @@ module Ole # :nodoc:
 			
 			def self.dump str
 				# need to append nulls?
-				TO_UTF16.iconv str
+				data = TO_UTF16.iconv str
+				# not sure if this is the recommended way to do it, but I want to treat
+				# the resulting utf16 data as regular bytes, not characters.
+				data.force_encoding Encoding::US_ASCII if data.respond_to? :encoding
+				data
 			end
 		end
 

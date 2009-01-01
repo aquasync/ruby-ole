@@ -8,19 +8,7 @@ require 'digest/sha1'
 require 'stringio'
 require 'tempfile'
 require 'zlib'
-
-begin
-	require 'base64'
-rescue LoadError
-	# for 1.9 compatability - for now. not sure what
-	# advised migration is
-	module Base64
-		module_function
-		def decode64(str)
-			str.unpack("m")[0]
-		end
-	end
-end
+require 'base64'
 
 #
 # = TODO
@@ -60,26 +48,20 @@ class TestStorageRead < Test::Unit::TestCase
 		@warn = []
 		outer_warn = @warn
 		old_log = Ole::Log
+		old_verbose = $VERBOSE
 		begin
-			old_verbose = $VERBOSE
-			begin
-				$VERBOSE = nil
-				Ole.const_set :Log, Object.new
-			ensure
-				$VERBOSE = old_verbose
-			end
+			$VERBOSE = nil
+			Ole.const_set :Log, Object.new
+			# restore for the yield
+			$VERBOSE = old_verbose
 			(class << Ole::Log; self; end).send :define_method, :warn do |message|
 				outer_warn << message
 			end
 			yield
 		ensure
-			old_verbose = $VERBOSE
-			begin
-				$VERBOSE = nil
-				Ole.const_set :Log, Object.new
-			ensure
-				$VERBOSE = old_verbose
-			end
+			$VERBOSE = nil
+			Ole.const_set :Log, old_log
+			$VERBOSE = old_verbose
 		end
 	end
 
@@ -124,8 +106,8 @@ class TestStorageRead < Test::Unit::TestCase
 	end
 
 	def test_read
-		# this data should probably be put elsewhere. not asserting
-		# using hashes anymore, cause they were different on the mac.
+		# the regular String#hash was different on the mac, so asserting
+		# against full strings. switch this to sha1 instead of this fugly blob
 		data = <<-end
 			eJxjZGBgYkADAABKAAQ=
 
@@ -248,7 +230,7 @@ class TestStorageWrite < Test::Unit::TestCase
 	end
 
 	def test_create_from_scratch_hash
-		io = StringIO.new
+		io = StringIO.new('')
 		Ole::Storage.open(io) { }
 		assert_equal '6bb9d6c1cdf1656375e30991948d70c5fff63d57', sha1(io.string)
 		# more repack test, note invariance

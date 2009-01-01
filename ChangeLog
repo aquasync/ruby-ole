@@ -1,3 +1,7 @@
+== 1.2.8.2 / 2009-01-01
+
+- Update code to support ruby 1.9.1
+
 == 1.2.8.1 / 2008-10-22
 
 - Fix a couple of breakages when using $KCODE = 'UTF8'

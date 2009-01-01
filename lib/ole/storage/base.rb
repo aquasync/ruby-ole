@@ -60,6 +60,8 @@ module Ole # :nodoc:
 					IO::Mode.new(mode).writeable?
 				else
 					@io.flush
+					# this is for the benefit of ruby-1.9
+					@io.syswrite('') if @io.respond_to?(:syswrite)
 					true
 				end
 			rescue IOError
@@ -305,7 +307,7 @@ module Ole # :nodoc:
 					io.binmode
 					repack_using_io io
 				end
-			when :mem;  StringIO.open(&method(:repack_using_io))
+			when :mem;  StringIO.open('', &method(:repack_using_io))
 			else raise ArgumentError, "unknown temp backing #{temp.inspect}"
 			end
 		end
