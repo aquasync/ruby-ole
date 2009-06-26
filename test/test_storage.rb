@@ -7,8 +7,6 @@ require 'ole/storage'
 require 'digest/sha1'
 require 'stringio'
 require 'tempfile'
-require 'zlib'
-require 'base64'
 
 #
 # = TODO
@@ -108,49 +106,18 @@ class TestStorageRead < Test::Unit::TestCase
 	def test_read
 		# the regular String#hash was different on the mac, so asserting
 		# against full strings. switch this to sha1 instead of this fugly blob
-		data = <<-end
-			eJxjZGBgYkADAABKAAQ=
-
-			eJxjZPj3n5mLgeE/EDBwMjGAwAEwyeAmAyR8M5OL8ovz00oUwvOLUhTM9Ax0
-			XfKzS3NT80oYuEDywSBxl/xkBgEgD8TWA3LA8npmYGMAKWQZqA==
-
-			eJztVs9rE0EU/mZ32m5smyZtUlKQunhIezAV6knwYGoRxRLQBG89zCabdiE7
-			K9kJpt7Es1DwLxCsP+jJqycv/S/8I9SrmPgmuy0pK1ilNZd8MPt233zz7dud
-			H+99OXBR+pziILgYgglkqaUvIYFs0pWEBSyzIfsHLKeA3Fl0Y6wTX4d2K7bH
-			uEvP6i90zhuf6P21fxpp0C9nOMOvGuMcUQ1811ZuqOjSVWuzszm8eb52cFR+
-			K/k7yd9L/kHyV6OO8gJBezwT7/UVaj/xY9QRjXHhMDoM5rapZ39o/ntRZ2+0
-			sY3xv0C5xkhT1rXo7gHmBr5VWg7f+gbZqU23KTotSqaT5L+Ba2waDmjR1AsQ
-			qZnf6BVRvv29/5rsUtkJhXpWqiohG6LdCOu7ba+pRFud5veuMBisiKl7rmh4
-			ckfn8jnkv2KxC4tNYpujfhk2NjKaZyNVo0PadoLGni4sMshDM3XlcD3D2DzL
-			gW95oaJcmj3Rv6r174gnyguk1p9HvqtHpdmE/pTHDIUBb50VMHFfNlwS5Fig
-			/ihKrcQH+wPoExCflMZJjWRSxZFf3Cd+zfPd0K64T+1HgS8kZshroLrnO0EL
-			00VNKbc90cKqpi9UPN/phBHXrgQ37a2EwpIelI6JVSFD4kQSGxQVs14WgCMK
-			ZXcQ7WHtYxPWw5JupyuJqLLgeLHPEt5jz4r5CxXWcbY=
-
-			eJzt0z1oU2EcRvE3rR+tWtGtOBQ3hS4tODgWKnQRlM5dHAoZCuIHaLcsBaGT
-			hIBksQmlQ1wCTgF3Q+Z0cHN1lZBQQhL/N60fUEEKh5bK+cHleXlJw+2hHY5S
-			yqXjsruvW++/HzzK3/jwdirN3/n4ZSHu2vspXY+9Gc/ro88txN107P3YK7EP
-			Yq/GPo6diV2LvRabj52KfRl7IbYQeyn2Xezl2N3Yi7H12MnYT7ETsc3Yley+
-			ndIoZN9xN55n8eyM32F2/M6F9vHfYyTa3lm/wH/Ipjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzK
-			synPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPpjyb8mzKsynPprx/NO33
-			+7VaLQ6VSqVUKpXL5cFg0Gq1Go1GtVptNpvFYrFer8dNp9M5lRc+B078dzoc
-			Dnu93uGh2+3G+deNDvm/z7Mpz6Y8m/JsyrMpz6Y8m/JsyrMpz6a8vYmU0rdB
-			SnOx2XkxnqX02/j8ZnXzb+fCrcr09r3Puexnc0efz84z8SznnzzfWH9x++HT
-			V+s/7//8zEnOPwDhN6kw
-		end
-		expect = data.split(/\n\s*\n/).map { |chunk| Zlib::Inflate.inflate Base64.decode64(chunk) }
+		sha1sums = %w[
+			d3d1cde9eb43ed4b77d197af879f5ca8b8837577
+			65b75cbdd1f94ade632baeeb0848dec2a342c844
+			cfc230ec7515892cfdb85e4a173e0ce364094970
+			ffd859d94647a11b693f06f092d1a2bccc59d50d
+		]
 
 		# test the ole storage type
 		type = 'Microsoft Word 6.0-Dokument'
 		assert_equal type, (@ole.root/"\001CompObj").read[32..-1][/([^\x00]+)/m, 1]
 		# i was actually not loading data correctly before, so carefully check everything here
-		assert_equal expect, @ole.root.children.map { |child| child.read }
+		assert_equal sha1sums, @ole.root.children.map { |child| Digest::SHA1.hexdigest child.read }
 	end
 
 	def test_dirent
@@ -206,8 +173,8 @@ class TestStorageWrite < Test::Unit::TestCase
 		assert_equal '9974e354def8471225f548f82b8d81c701221af7', sha1(io.string)
 		Ole::Storage.open(io, :update_timestamps => false) { }
 		# hash changed. used to be efa8cfaf833b30b1d1d9381771ddaafdfc95305c
-		# thats because i know truncate the io, and am probably removing some trailing allocated
-		# available blocks.
+		# thats because i now truncate the io, and am probably removing some trailing
+		# allocated available blocks.
 		assert_equal 'a39e3c4041b8a893c753d50793af8d21ca8f0a86', sha1(io.string)
 		# add a repack test here
 		Ole::Storage.open io, :update_timestamps => false, &:repack
