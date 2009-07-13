@@ -57,23 +57,14 @@ class RangesIO
 		@params = {:close_parent => false}.merge params
 		@mode = IO::Mode.new mode
 		@io = io
-		# convert ranges to arrays. check for negative ranges?
-		ranges ||= [0, io.size]
-		@ranges = ranges.map { |r| Range === r ? [r.begin, r.end - r.begin] : r }
-		# calculate size
-		@size = @ranges.inject(0) { |total, (pos, len)| total + len }
 		# initial position in the file
 		@pos = 0
-
+		self.ranges = ranges || [[0, io.size]]
 		# handle some mode flags
 		truncate 0 if @mode.truncate?
 		seek size if @mode.append?
 	end
-
-#IOError: closed stream
-# get this for reading, writing, everything...
-#IOError: not opened for writing
-
+	
 	# add block form. TODO add test for this
 	def self.open(*args, &block)
 		ranges_io = new(*args)
@@ -86,6 +77,36 @@ class RangesIO
 		end
 	end
 
+	def ranges= ranges
+		# convert ranges to arrays. check for negative ranges?
+		ranges = ranges.map { |r| Range === r ? [r.begin, r.end - r.begin] : r }
+		# combine ranges
+		if @params[:combine] == false
+			# might be useful for debugging...
+			@ranges = ranges
+		else
+			@ranges = []
+			next_pos = nil
+			ranges.each do |pos, len|
+				if next_pos == pos
+					@ranges.last[1] += len
+					next_pos += len
+				else
+					@ranges << [pos, len]
+					next_pos = pos + len
+				end
+			end
+		end
+		# calculate cumulative offsets from range sizes
+		@size = 0
+		@offsets = []
+		@ranges.each do |pos, len|
+			@offsets << @size
+			@size += len
+		end
+		self.pos = @pos
+	end
+
 	def pos= pos, whence=IO::SEEK_SET
 		case whence
 		when IO::SEEK_SET
@@ -95,30 +116,36 @@ class RangesIO
 			pos = @size + pos
 		else raise Errno::EINVAL
 		end
-		raise Errno::EINVAL unless (0...@size) === pos
+		raise Errno::EINVAL unless (0..@size) === pos
 		@pos = pos
+
+		# do a binary search throuh @offsets to find the active range.
+		a, c, b = 0, 0, @offsets.length
+		while a < b
+			c = (a + b) / 2
+			pivot = @offsets[c]
+			if pos == pivot
+				@active = c
+				return
+			elsif pos < pivot
+				b = c
+			else
+				a = c + 1
+			end
+		end
+
+		@active = a - 1
 	end
 
 	alias seek :pos=
 	alias tell :pos
 
-	def close
-		@io.close if @params[:close_parent]
+	def rewind
+		seek 0
 	end
 
-	# returns the [+offset+, +size+], pair inorder to read/write at +pos+
-	# (like a partial range), and its index.
-	def offset_and_size pos
-		total = 0
-		ranges.each_with_index do |(offset, size), i|
-			if pos <= total + size
-				diff = pos - total
-				return [offset + diff, size - diff], i
-			end
-			total += size
-		end
-		# should be impossible for any valid pos, (0...size) === pos
-		raise ArgumentError, "no range for pos #{pos.inspect}"
+	def close
+		@io.close if @params[:close_parent]
 	end
 
 	def eof?
@@ -130,24 +157,26 @@ class RangesIO
 		data = ''
 		return data if eof?
 		limit ||= size
-		partial_range, i = offset_and_size @pos
-		# this may be conceptually nice (create sub-range starting where we are), but
-		# for a large range array its pretty wasteful. even the previous way was. but
-		# i'm not trying to optimize this atm. it may even go to c later if necessary.
-		([partial_range] + ranges[i+1..-1]).each do |pos, len|
+		pos, len = @ranges[@active]
+		diff = @pos - @offsets[@active]
+		pos += diff
+		len -= diff
+		loop do
 			@io.seek pos
 			if limit < len
-				# convoluted, to handle read errors. s may be nil
-				s = @io.read limit
-				@pos += s.length if s
-				break data << s
+				s = @io.read(limit).to_s
+				@pos += s.length
+				data << s
+				break
 			end
-			# convoluted, to handle ranges beyond the size of the file
-			s = @io.read len
-			@pos += s.length if s
+			s = @io.read(len).to_s
+			@pos += s.length
 			data << s
 			break if s.length != len
 			limit -= len
+			break if @active == @ranges.length - 1
+			@active += 1
+			pos, len = @ranges[@active]
 		end
 		data
 	end
@@ -164,8 +193,6 @@ class RangesIO
 	end
 
 	def write data
-		# short cut. needed because truncate 0 may return no ranges, instead of empty range,
-		# thus offset_and_size fails.
 		return 0 if data.empty?
 		data_pos = 0
 		# if we don't have room, we can use the truncate hook to make more space.
@@ -176,8 +203,11 @@ class RangesIO
 				raise IOError, "unable to grow #{inspect} to write #{data.length} bytes" 
 			end
 		end
-		partial_range, i = offset_and_size @pos
-		([partial_range] + ranges[i+1..-1]).each do |pos, len|
+		pos, len = @ranges[@active]
+		diff = @pos - @offsets[@active]
+		pos += diff
+		len -= diff
+		loop do
 			@io.seek pos
 			if data_pos + len > data.length
 				chunk = data[data_pos..-1]
@@ -189,6 +219,9 @@ class RangesIO
 			@io.write data[data_pos, len]
 			@pos += len
 			data_pos += len
+			break if @active == @ranges.length - 1
+			@active += 1
+			pos, len = @ranges[@active]
 		end
 		data_pos
 	end
@@ -202,17 +235,13 @@ class RangesIO
 	def gets
 		s = read 1024
 		i = s.index "\n"
-		@pos -= s.length - (i+1)
+		self.pos -= s.length - (i+1)
 		s[0..i]
 	end
 	alias readline :gets
 
 	def inspect
-		# the rescue is for empty files
-		pos, len = (@ranges[offset_and_size(@pos).last] rescue [nil, nil])
-		range_str = pos ? "#{pos}..#{pos+len}" : 'nil'
-		"#<#{self.class} io=#{io.inspect}, size=#@size, pos=#@pos, "\
-			"range=#{range_str}>"
+		"#<#{self.class} io=#{io.inspect}, size=#{@size}, pos=#{@pos}>"
 	end
 end
 

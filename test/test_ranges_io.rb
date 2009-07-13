@@ -31,18 +31,11 @@ class TestRangesIO < Test::Unit::TestCase
 
 	def test_basics
 		assert_equal 160, @io.size
-		assert_match %r{size=160,.*range=100\.\.200}, @io.inspect
+		assert_match %r{size=160}, @io.inspect
 	end
 
 	def test_truncate
 		assert_raises(NotImplementedError) { @io.size += 10 }
-	end
-
-	def test_offset_and_size
-		assert_equal [[100, 100], 0], @io.offset_and_size(0)
-		assert_equal [[150, 50], 0], @io.offset_and_size(50)
-		assert_equal [[5, 5], 1], @io.offset_and_size(105)
-		assert_raises(ArgumentError) { @io.offset_and_size 1000 }
 	end
 
 	def test_seek

@@ -21,7 +21,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.8.2'
+		VERSION = '1.2.9'
 
 		# options used at creation time
 		attr_reader :params
@@ -602,8 +602,8 @@ module Ole # :nodoc:
 				# note that old_blocks is != @ranges.length necessarily. i'm planning to write a
 				# merge_ranges function that merges sequential ranges into one as an optimization.
 				@bat.resize_chain @blocks, size
-				@ranges = @bat.ranges @blocks, size
-				@pos = @size if @pos > size
+				@pos = size if @pos > size
+				self.ranges = @bat.ranges(@blocks, size)
 				self.first_block = @blocks.empty? ? AllocationTable::EOC : @blocks.first
 
 				# don't know if this is required, but we explicitly request our @io to grow if necessary
@@ -612,8 +612,6 @@ module Ole # :nodoc:
 				# maybe its ok to just seek out there later??
 				max = @ranges.map { |pos, len| pos + len }.max || 0
 				@io.truncate max if max > @io.size
-
-				@size = size
 			end
 		end
 
@@ -633,8 +631,8 @@ module Ole # :nodoc:
 					# bat migration needed! we need to backup some data. the amount of data
 					# should be <= @ole.header.threshold, so we can just hold it all in one buffer.
 					# backup this
-					pos = @pos
-					@pos = 0
+					pos = [@pos, size].min
+					self.pos = 0
 					keep = read [@size, size].min
 					# this does a normal truncate to 0, removing our presence from the old bat, and
 					# rewrite the dirent's first_block
@@ -645,9 +643,9 @@ module Ole # :nodoc:
 					# important to do this now, before the write. as the below write will always
 					# migrate us back to sbat! this will now allocate us +size+ in the new bat.
 					super
-					@pos = 0
+					self.pos = 0
 					write keep
-					@pos = pos
+					self.pos = pos
 				else
 					super
 				end

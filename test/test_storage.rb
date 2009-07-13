@@ -1,6 +1,7 @@
 #! /usr/bin/ruby
 
 $: << File.dirname(__FILE__) + '/../lib'
+#require 'rubygems'
 
 require 'test/unit'
 require 'ole/storage'
@@ -136,9 +137,7 @@ class TestStorageRead < Test::Unit::TestCase
 
 		dirent.open('r') { |f| assert_equal 2, f.first_block }
 		dirent.open('w') { |f| }
-		assert_raises Errno::EINVAL do
-			dirent.open('a') { |f| }
-		end
+		dirent.open('a') { |f| }
 	end
 
 	def test_delete
