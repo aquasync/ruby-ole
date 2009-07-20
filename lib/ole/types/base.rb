@@ -57,7 +57,33 @@ module Ole # :nodoc:
 		# for VT_FILETIME
 		class FileTime < DateTime
 			SIZE = 8
+
+			# DateTime.new is slow... faster version for FileTime
+			def self.new year, month, day, hour=0, min=0, sec=0, usec=0
+				# DateTime will remove leap and leap-leap seconds
+				sec = 59 if sec > 59
+				if month <= 2
+					month += 12
+					year  -= 1
+				end
+				y   = year + 4800
+				m   = month - 3
+				jd  = day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
+				fr  = hour / 24.0 + min / 1440.0 + sec / 86400.0
+				new! jd + fr - 0.5, 0, ITALY
+			end
+
+			def self.from_time time
+				new(*(time.to_a[0, 6].reverse + [time.usec]))
+			end
+
+			def self.now
+				from_time Time.now
+			end
+
 			EPOCH = new 1601, 1, 1
+
+			#def initialize year, month, day, hour, min, sec
 
 			# Create a +DateTime+ object from a struct +FILETIME+
 			# (http://msdn2.microsoft.com/en-us/library/ms724284.aspx).
@@ -68,27 +94,26 @@ module Ole # :nodoc:
 				low, high = str.to_s.unpack 'V2'
 				# we ignore these, without even warning about it
 				return nil if low == 0 and high == 0
-				# switched to rational, and fixed the off by 1 second error i sometimes got.
-				# time = EPOCH + (high * (1 << 32) + low) / 1e7 / 86400 rescue return
-				# use const_get to ensure we can return anything which subclasses this (VT_DATE?)
-				const_get('EPOCH') + Rational(high * (1 << 32) + low, 1e7.to_i * 86400) rescue return
-				# extra sanity check...
-				#unless (1800...2100) === time.year
-				#	Log.warn "ignoring unlikely time value #{time.to_s}"
-				#	return nil
-				#end
-				#time
+				# the + 0.00001 here stinks a bit...
+				seconds = (high * (1 << 32) + low) / 1e7 + 0.00001
+				EPOCH + seconds / 86400 rescue return
 			end
-			
+
 			# +time+ should be able to be either a Time, Date, or DateTime.
 			def self.dump time
-				# i think i'll convert whatever i get to be a datetime, because of
-				# the covered range.
 				return 0.chr * SIZE unless time
-				time = time.send(:to_datetime) if Time === time
-				# don't bother to use const_get here
-				bignum = (time - EPOCH) * 86400 * 1e7.to_i
-				high, low = bignum.divmod 1 << 32
+				# convert whatever is given to be a datetime, to handle the large range
+				case time
+				when Date # this includes DateTime & FileTime
+				when Time
+					time = from_time time
+				else
+					raise ArgumentError, 'unknown time argument - %p' % [time]
+				end
+				# round to milliseconds (throwing away nanosecond precision) to
+				# compensate for using Float-based DateTime
+				nanoseconds = ((time - EPOCH).to_f * 864000000).round * 1000
+				high, low = nanoseconds.divmod 1 << 32
 				[low, high].pack 'V2'
 			end
 			

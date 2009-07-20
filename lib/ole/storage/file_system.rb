@@ -45,12 +45,13 @@ module Ole # :nodoc:
 		# (change it)
 		def dirent_from_path path
 			dirent = @root
-			path = file.expand_path path
-			path = path.sub(/^\/*/, '').sub(/\/*$/, '').split(/\/+/)
+			path = file.expand_path(path).split('/')
 			until path.empty?
+				part = path.shift
+				next if part.empty?
 				return nil if dirent.file?
-				return nil unless dirent = dirent/path.shift
-			end
+				return nil unless dirent = dirent/part
+			end			
 			dirent
 		end
 
@@ -107,14 +108,20 @@ module Ole # :nodoc:
 			end
 
 			def expand_path path
-				# get the raw stored pwd value (its blank for root)
-				pwd = @ole.dir.instance_variable_get :@pwd
-				# its only absolute if it starts with a '/'
-				path = "#{pwd}/#{path}" unless path =~ /^\//
+				# its already absolute if it starts with a '/'
+				unless path =~ /^\//
+					# get the raw stored pwd value (its blank for root)
+					pwd = @ole.dir.instance_variable_get :@pwd
+					path = "#{pwd}/#{path}"
+				end
 				# at this point its already absolute. we use File.expand_path
 				# just for the .. and . handling
 				# No longer use RUBY_PLATFORM =~ /win/ as it matches darwin. better way?
-				File.expand_path(path)[File::ALT_SEPARATOR == "\\" ? (2..-1) : (0..-1)]
+				if File::ALT_SEPARATOR != "\\"
+					File.expand_path(path)
+				else
+					File.expand_path(path)[2..-1]
+				end
 			end
 
 			# +orig_path+ is just so that we can use the requested path
@@ -122,7 +129,7 @@ module Ole # :nodoc:
 			def dirent_from_path path, orig_path=nil
 				orig_path ||= path
 				dirent = @ole.dirent_from_path path
-				raise Errno::ENOENT,  orig_path unless dirent
+				raise Errno::ENOENT, orig_path unless dirent
 				raise Errno::EISDIR, orig_path if dirent.dir?
 				dirent
 			end
@@ -152,7 +159,7 @@ module Ole # :nodoc:
 						# a get_parent_dirent function.
 						parent_path, basename = File.split expand_path(path)
 						parent = @ole.dir.send :dirent_from_path, parent_path, path
-						parent.children << dirent = Dirent.new(@ole, :type => :file, :name => basename)
+						parent << dirent = Dirent.new(@ole, :type => :file, :name => basename)
 					end
 				else
 					dirent = dirent_from_path path
@@ -211,31 +218,20 @@ module Ole # :nodoc:
 					1 + 1
 				end
 				# reparent the dirent
-				from_parent_path, from_basename = File.split expand_path(from_path)
 				to_parent_path, to_basename = File.split expand_path(to_path)
-				from_parent = @ole.dir.send :dirent_from_path, from_parent_path, from_path
+				from_parent = dirent.parent
 				to_parent = @ole.dir.send :dirent_from_path, to_parent_path, to_path
-				from_parent.children.delete dirent
+				from_parent.delete dirent, false
 				# and also change its name
 				dirent.name = to_basename
-				to_parent.children << dirent
+				to_parent << dirent
 				0
 			end
 
-			# crappy copy from Dir.
 			def unlink(*paths)
 				paths.each do |path|
-					dirent = @ole.dirent_from_path path
-					# i think we should free all of our blocks from the
-					# allocation table.
-					# i think if you run repack, all free blocks should get zeroed,
-					# but currently the original data is there unmodified.
-					open(path) { |f| f.truncate 0 }
-					# remove ourself from our parent, so we won't be part of the dir
-					# tree at save time.
-					parent_path, basename = File.split expand_path(path)
-					parent = @ole.dir.send :dirent_from_path, parent_path, path
-					parent.children.delete dirent
+					dirent = dirent_from_path path
+					dirent.parent.delete dirent
 				end
 				paths.length # hmmm. as per ::File ?
 			end
@@ -243,15 +239,17 @@ module Ole # :nodoc:
 		end
 
 		#
-		# an *instance* of this class is supposed to provide similar methods
+		# An *instance* of this class is supposed to provide similar methods
 		# to the class methods of Dir itself.
 		#
-		# pretty complete. like zip/zipfilesystem's implementation, i provide
+		# Fairly complete - like zip/zipfilesystem's implementation, i provide
 		# everything except chroot and glob. glob could be done with a glob
-		# to regex regex, and then simply match in the entries array... although
-		# recursive glob complicates that somewhat.
+		# to regex conversion, and then simply match in the entries array...
+		# although recursive glob complicates that somewhat.
 		#
-		# Dir.chroot, Dir.glob, Dir.[], and Dir.tmpdir is the complete list.
+		# Dir.chroot, Dir.glob, Dir.[], and Dir.tmpdir is the complete list of
+		# methods still missing.
+		#
 		class DirClass
 			def initialize ole
 				@ole = ole
@@ -271,11 +269,8 @@ module Ole # :nodoc:
 
 			def open path
 				dir = Dir.new path, entries(path)
-				if block_given?
-					yield dir
-				else
-					dir
-				end
+				return dir unless block_given?
+				yield dir
 			end
 
 			# as for file, explicit alias to inhibit block
@@ -286,17 +281,14 @@ module Ole # :nodoc:
 			# pwd is always stored without the trailing slash. we handle
 			# the root case here
 			def pwd
-				if @pwd.empty?
-					'/'
-				else
-					@pwd
-				end
+				return '/' if @pwd.empty?
+				@pwd
 			end
 			alias getwd :pwd
 
 			def chdir orig_path
 				# make path absolute, squeeze slashes, and remove trailing slash
-				path = @ole.file.expand_path(orig_path).gsub(/\/+/, '/').sub(/\/$/, '')
+				path = @ole.file.expand_path(orig_path).squeeze('/').sub(/\/$/, '')
 				# this is just for the side effects of the exceptions if invalid
 				dirent_from_path path, orig_path
 				if block_given?
@@ -331,10 +323,7 @@ module Ole # :nodoc:
 				entries(path).each(&block)
 			end
 
-			# there are some other important ones, like:
-			# chroot (!), glob etc etc. for now, i think
 			def mkdir path
-				# as for rmdir below:
 				parent_path, basename = File.split @ole.file.expand_path(path)
 				# note that we will complain about the full path despite accessing
 				# the parent path. this is consistent with ::Dir
@@ -342,29 +331,14 @@ module Ole # :nodoc:
 				# now, we first should ensure that it doesn't already exist
 				# either as a file or a directory.
 				raise Errno::EEXIST, path if parent/basename
-				parent.children << Dirent.new(@ole, :type => :dir, :name => basename)
+				parent << Dirent.new(@ole, :type => :dir, :name => basename)
 				0
 			end
 
 			def rmdir path
 				dirent = dirent_from_path path
 				raise Errno::ENOTEMPTY, path unless dirent.children.empty?
-
-				# now delete it, how to do that? the canonical representation that is
-				# maintained is the root tree, and the children array. we must remove it
-				# from the children array.
-				# we need the parent then. this sucks but anyway:
-				# we need to split the path. but before we can do that, we need
-				# to expand it first. eg. say we need the parent to unlink
-				# a/b/../c. the parent should be a, not a/b/.., or a/b.
-				parent_path, basename = File.split @ole.file.expand_path(path)
-				# this shouldn't be able to fail if the above didn't
-				parent = dirent_from_path parent_path
-				# note that the way this currently works, on save and repack time this will get
-				# reflected. to work properly, ie to make a difference now it would have to re-write
-				# the dirent. i think that Ole::Storage#close will handle that. and maybe include a
-				# #repack.
-				parent.children.delete dirent
+				dirent.parent.delete dirent
 				0 # hmmm. as per ::Dir ?
 			end
 			alias delete :rmdir
@@ -373,7 +347,6 @@ module Ole # :nodoc:
 			# note that there is nothing remotely ole specific about
 			# this class. it simply provides the dir like sequential access
 			# methods on top of an array.
-			# hmm, doesn't throw the IOError's on use of a closed directory...
 			class Dir
 				include Enumerable
 
@@ -408,14 +381,12 @@ module Ole # :nodoc:
 					raise IOError if @closed
 					@pos = [[0, pos].max, @entries.length].min
 				end
-
-				def rewind
-					raise IOError if @closed
-					@pos = 0
-				end
-
 				alias tell :pos
 				alias seek :pos=
+
+				def rewind
+					seek 0
+				end
 			end
 		end
 	end

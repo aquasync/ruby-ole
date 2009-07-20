@@ -1,3 +1,13 @@
+== 1.2.10 / 2009-07-20
+
+- Mostly more performance enhancements, significantly faster for
+  certain operations.
+- Using lots of files is faster due to new hash lookup for dirents by name.
+- Writes of many files are faster now too as Dirent & FileTime serialization
+  has been improved.
+- Certain operations from the filesystem api have been profiled and sped up.
+- Don't use syswrite on jruby to avoid the buffered stream warnings.
+
 == 1.2.9 / 2009-07-14
 
 - Lots of performance enhancements for RangesIO.

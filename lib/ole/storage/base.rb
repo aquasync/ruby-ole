@@ -21,7 +21,7 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.9'
+		VERSION = '1.2.10'
 
 		# options used at creation time
 		attr_reader :params
@@ -61,7 +61,10 @@ module Ole # :nodoc:
 				else
 					@io.flush
 					# this is for the benefit of ruby-1.9
-					@io.syswrite('') if @io.respond_to?(:syswrite)
+					# generates warnings on jruby though... :/
+					if RUBY_PLATFORM != 'java' and @io.respond_to?(:syswrite)
+						@io.syswrite('')
+					end
 					true
 				end
 			rescue IOError
@@ -177,7 +180,7 @@ module Ole # :nodoc:
 
 			# serialize the dirents using the bbat
 			RangesIOResizeable.open @bbat, 'w', :first_block => @header.dirent_start do |io|
-				@dirents.each { |dirent| io.write dirent.to_s }
+				io.write @dirents.map { |dirent| dirent.to_s }.join
 				padding = (io.size / @bbat.block_size.to_f).ceil * @bbat.block_size - io.size
 				io.write 0.chr * padding
 				@header.dirent_start = io.first_block
@@ -200,7 +203,7 @@ module Ole # :nodoc:
 			@bbat.map! do |b|
 				b == AllocationTable::BAT || b == AllocationTable::META_BAT ? AllocationTable::AVAIL : b
 			end
-	
+
 			# currently we use a loop. this could be better, but basically,
 			# the act of writing out the bat, itself requires blocks which get
 			# recorded in the bat.
@@ -479,7 +482,7 @@ module Ole # :nodoc:
 			# The blocks are Big or Small blocks depending on the table type.
 			def blocks_to_ranges chain, size=nil
 				# truncate the chain if required
-				chain = chain[0...(size.to_f / block_size).ceil] if size
+				chain = chain[0, (size.to_f / block_size).ceil] if size
 				# convert chain to ranges of the block size
 				ranges = chain.map { |i| [block_size * i, block_size] }
 				# truncate final range if required
@@ -523,8 +526,8 @@ module Ole # :nodoc:
 			def free_block
 				if @sparse
 					i = index(AVAIL) and return i
+					@sparse = false
 				end
-				@sparse = false
 				push AVAIL
 				length - 1
 			end
@@ -562,8 +565,14 @@ module Ole # :nodoc:
 				end
 
 				# Big blocks are kind of -1 based, in order to not clash with the header.
-				def blocks_to_ranges blocks, size
-					super blocks.map { |b| b + 1 }, size
+				def blocks_to_ranges chain, size=nil
+					#super chain.map { |b| b + 1 }, size
+					# duplicated from AllocationTable#blocks_to_ranges to avoid chain.map
+					# which was decent part of benchmark profile
+					chain = chain[0, (size.to_f / block_size).ceil] if size
+					ranges = chain.map { |i| [block_size * (i + 1), block_size] }
+					ranges.last[1] -= (ranges.length * block_size - size) if ranges.last and size
+					ranges
 				end
 			end
 
@@ -708,13 +717,21 @@ module Ole # :nodoc:
 				AllocationTable::EOC, 0, 0.chr * 4
 			]
 
-			# i think its just used by the tree building
-			attr_accessor :idx
 			# This returns all the children of this +Dirent+. It is filled in
 			# when the tree structure is recreated.
-			attr_accessor :children
-			attr_accessor :name
+			attr_reader :children
+			attr_reader :name
 			attr_reader :ole, :type, :create_time, :modify_time
+			attr_reader :parent
+
+			# i think its just used by the tree building
+			attr_accessor :idx
+
+			# these are for internal use and are used for faster lookup.
+			attr_reader :name_lookup
+			attr_writer :parent
+			protected :name_lookup, :parent=
+
 			def initialize ole, values=DEFAULT, params={}
 				@ole = ole				
 				values, params = DEFAULT, values if Hash === values
@@ -734,44 +751,46 @@ module Ole # :nodoc:
 
 				# further extra type specific stuff
 				if file?
-					default_time = @ole.params[:update_timestamps] ? Time.now : nil
+					default_time = @ole.params[:update_timestamps] ? Types::FileTime.now : nil
 					@create_time ||= default_time
 					@modify_time ||= default_time
 					@create_time = Types::Variant.load(Types::VT_FILETIME, create_time_str) if create_time_str
 					@modify_time = Types::Variant.load(Types::VT_FILETIME, create_time_str) if modify_time_str
 					@children = nil
+					@name_lookup = nil
 				else
 					@create_time = nil
 					@modify_time = nil
 					self.size = 0 unless @type == :root
 					@children = []
+					@name_lookup = {}
 				end
+
+				@parent = nil
 				
 				# to silence warnings. used for tree building at load time
 				# only.
 				@idx = nil
 			end
 
+			def name= name
+				if @parent
+					map = @parent.instance_variable_get :@name_lookup
+					map.delete @name
+					map[name] = self
+				end
+				@name = name
+			end
+
+			def children= children
+				@children = []
+				children.each { |child| self << child }
+			end
+
 			def open mode='r'
 				raise Errno::EISDIR unless file?
 				io = RangesIOMigrateable.new self, mode
-				# TODO work on the mode string stuff a bit more.
-				# maybe let the io object know about the mode, so it can refuse
-				# to work for read/write appropriately. maybe redefine all unusable
-				# methods using singleton class to throw errors.
-				# for now, i just want to implement truncation on use of 'w'. later,
-				# i need to do 'a' etc.
-				case mode
-				when 'r', 'r+'
-					# as i don't enforce reading/writing, nothing changes here. kind of
-					# need to enforce tt if i want modify times to work better.
-					@modify_time = Time.now if mode == 'r+'
-				when 'w'
-					@modify_time = Time.now
-				#	io.truncate 0
-				#else
-				#	raise NotImplementedError, "unsupported mode - #{mode.inspect}"
-				end
+				@modify_time = Types::FileTime.now if io.mode.writeable?
 				if block_given?
 					begin   yield io
 					ensure; io.close
@@ -795,7 +814,7 @@ module Ole # :nodoc:
 
 			# maybe need some options regarding case sensitivity.
 			def / name
-				children.find { |child| name === child.name }
+				@name_lookup[name]
 			end
 
 			def [] idx
@@ -884,11 +903,23 @@ module Ole # :nodoc:
 				str + '>'
 			end
 
-			def delete child
+			def << child
+				child.parent = self
+				@name_lookup[child.name] = child
+				@children << child
+			end
+
+			# remove the Dirent +child+ from the children array, truncating the data
+			# by default.
+			def delete child, truncate=true
 				# remove from our child array, so that on reflatten and re-creation of @dirents, it will be gone
-				raise ArgumentError, "#{child.inspect} not a child of #{self.inspect}" unless @children.delete child
+				unless @children.delete(child)
+					raise ArgumentError, "#{child.inspect} not a child of #{self.inspect}"
+				end
+				@name_lookup.delete(child.name)
+				child.parent = nil
 				# free our blocks
-				child.open { |io| io.truncate 0 }
+				child.open { |io| io.truncate 0 } if child.file?
 			end
 
 			def self.copy src, dst
@@ -899,7 +930,7 @@ module Ole # :nodoc:
 				if src.dir?
 					src.children.each do |src_child|
 						dst_child = Dirent.new dst.ole, :type => src_child.type
-						dst.children << dst_child
+						dst << dst_child
 						Dirent.copy src_child, dst_child
 					end
 				else
