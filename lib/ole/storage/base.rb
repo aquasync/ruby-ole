@@ -143,7 +143,10 @@ module Ole # :nodoc:
 			end
 
 			@root = @dirents.to_tree.first
-			Log.warn "root name was #{@root.name.inspect}" unless @root.name == 'Root Entry'
+			# silence this warning by default, its not really important (issue #5).
+			# fairly common one appears to be "R" (from office OS X?) which smells
+			# like some kind of UTF16 snafu, but scottwillson also has had some kanji...
+			#Log.warn "root name was #{@root.name.inspect}" unless @root.name == 'Root Entry'
 			unused = @dirents.reject(&:idx).length
 			Log.warn "#{unused} unused directories" if unused > 0
 
