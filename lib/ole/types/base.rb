@@ -70,7 +70,11 @@ module Ole # :nodoc:
 				m   = month - 3
 				jd  = day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
 				fr  = hour / 24.0 + min / 1440.0 + sec / 86400.0
-				new! jd + fr - 0.5, 0, ITALY
+				# avoid new!, as it was actually new0 in older versions of ruby (<=1.8.4?)
+				# see issue #4. this is equivalent, but doesn't rely on the aliasing used
+				obj = allocate
+				obj.send :initialize, jd + fr - 0.5, 0, ITALY
+				obj
 			end
 
 			def self.from_time time
