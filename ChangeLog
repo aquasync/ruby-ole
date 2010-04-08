@@ -1,3 +1,8 @@
+== 1.2.10.1 / 2010-03-19
+
+- Avoid use of DateTime#new! (issue #4)
+- Remove warning about unexpected root names (issue #5)
+
 == 1.2.10 / 2009-07-20
 
 - Mostly more performance enhancements, significantly faster for
