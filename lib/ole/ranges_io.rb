@@ -1,3 +1,5 @@
+# encoding: ASCII-8BIT
+
 # need IO::Mode
 require 'ole/support'
 

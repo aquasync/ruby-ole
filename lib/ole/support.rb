@@ -1,3 +1,5 @@
+# encoding: ASCII-8BIT
+
 # 
 # A file with general support functions used by most files in the project.
 # 

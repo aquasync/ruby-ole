@@ -873,7 +873,30 @@ class OleFsDirIteratorTest < Test::Unit::TestCase
 
 end
 
+class OleUnicodeTest < Test::Unit::TestCase
+	def setup
+		@io = StringIO.new ''
+	end
+	
+	def test_unicode
+		# in ruby-1.8, encoding is assumed to be UTF-8 (and converted with iconv).
+		# in ruby-1.9, UTF-8 works also, but probably shouldn't be using fixed
+		# TO_UTF16 iconv for other encodings.
+		resume = "R\xc3\xa9sum\xc3\xa9"
+		resume.force_encoding Encoding::UTF_8 if resume.respond_to? :encoding
+		Ole::Storage.open @io do |ole|
+			ole.file.open(resume, 'w') { |f| f.write 'Skills: writing bad unit tests' }
+		end
+		Ole::Storage.open @io do |ole|
+			assert_equal ['.', '..', resume], ole.dir.entries('.')
+			# use internal api to verify utf16 encoding
+			assert_equal "R\x00\xE9\x00s\x00u\x00m\x00\xE9\x00", ole.root.children[0].name_utf16[0, 6 * 2]
+			assert_equal 'Skills', ole.file.read(resume).split(': ', 2).first
+		end
+	end
+end
 
 # Copyright (C) 2002, 2003 Thomas Sondergaard
 # rubyzip is free software; you can redistribute it and/or
 # modify it under the terms of the ruby license.
+

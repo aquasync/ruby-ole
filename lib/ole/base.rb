@@ -1,3 +1,5 @@
+# encoding: ASCII-8BIT
+
 
 require 'ole/support'
 

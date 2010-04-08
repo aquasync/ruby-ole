@@ -1,3 +1,5 @@
+# encoding: ASCII-8BIT
+
 require 'ole/types/property_set'
 
 module Ole
