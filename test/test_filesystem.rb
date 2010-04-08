@@ -880,7 +880,7 @@ class OleUnicodeTest < Test::Unit::TestCase
 	
 	def test_unicode
 		# in ruby-1.8, encoding is assumed to be UTF-8 (and converted with iconv).
-		# in ruby-1.9, UTF-8 works also, but probably shouldn't be using fixed
+		# in ruby-1.9, UTF-8 should work also, but probably shouldn't be using fixed
 		# TO_UTF16 iconv for other encodings.
 		resume = "R\xc3\xa9sum\xc3\xa9"
 		resume.force_encoding Encoding::UTF_8 if resume.respond_to? :encoding
@@ -891,7 +891,15 @@ class OleUnicodeTest < Test::Unit::TestCase
 			assert_equal ['.', '..', resume], ole.dir.entries('.')
 			# use internal api to verify utf16 encoding
 			assert_equal "R\x00\xE9\x00s\x00u\x00m\x00\xE9\x00", ole.root.children[0].name_utf16[0, 6 * 2]
-			assert_equal 'Skills', ole.file.read(resume).split(': ', 2).first
+			# FIXME: there is a bug in ruby-1.9 (at least in p376), which makes encoded
+			# strings useless as hash keys. identical bytes, identical encodings, identical
+			# according to #==, but different hash.
+			temp = File.expand_path("/#{resume}").split('/').last
+			if resume == temp and resume.hash != temp.hash
+				warn 'skipping assertion due to broken String#hash'
+			else
+				assert_equal 'Skills', ole.file.read(resume).split(': ', 2).first
+			end
 		end
 	end
 end

@@ -53,7 +53,7 @@ module Ole # :nodoc:
 				next if part.empty?
 				return nil if dirent.file?
 				return nil unless dirent = dirent/part
-			end			
+			end
 			dirent
 		end
 
