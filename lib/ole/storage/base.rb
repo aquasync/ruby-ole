@@ -23,8 +23,6 @@ module Ole # :nodoc:
 		class FormatError < StandardError # :nodoc:
 		end
 
-		VERSION = '1.2.10.1'
-
 		# options used at creation time
 		attr_reader :params
 		# The top of the ole tree structure

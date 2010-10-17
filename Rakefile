@@ -6,9 +6,7 @@ require 'rake/gempackagetask'
 require 'rbconfig'
 require 'fileutils'
 
-$:.unshift 'lib'
-
-require 'ole/storage'
+load File.dirname(__FILE__) + '/lib/ole/storage/version.rb'
 
 PKG_NAME = 'ruby-ole'
 PKG_VERSION = Ole::Storage::VERSION
