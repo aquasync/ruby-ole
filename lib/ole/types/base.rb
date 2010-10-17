@@ -18,7 +18,7 @@ module Ole # :nodoc:
 			def self.load str
 				new str
 			end
-			
+
 			def self.dump str
 				str.to_s
 			end
@@ -41,11 +41,11 @@ module Ole # :nodoc:
 		class Lpwstr < String
 			FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
 			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
-			
+
 			def self.load str
 				new FROM_UTF16.iconv(str).chomp(0.chr)
 			end
-			
+
 			def self.dump str
 				# need to append nulls?
 				data = TO_UTF16.iconv str
@@ -72,11 +72,10 @@ module Ole # :nodoc:
 				m   = month - 3
 				jd  = day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
 				fr  = hour / 24.0 + min / 1440.0 + sec / 86400.0
-				# avoid new!, as it was actually new0 in older versions of ruby (<=1.8.4?)
-				# see issue #4. this is equivalent, but doesn't rely on the aliasing used
-				obj = allocate
-				obj.send :initialize, jd + fr - 0.5, 0, ITALY
-				obj
+				# new! was actually new0 in older versions of ruby (<=1.8.4?)
+				# see issue #4.
+				msg = respond_to?(:new!) ? :new! : :new0
+				send msg, jd + fr - 0.5, 0, ITALY
 			end
 
 			def self.from_time time
@@ -122,7 +121,7 @@ module Ole # :nodoc:
 				high, low = nanoseconds.divmod 1 << 32
 				[low, high].pack 'V2'
 			end
-			
+
 			def inspect
 				"#<#{self.class} #{to_s}>"
 			end
@@ -140,13 +139,13 @@ module Ole # :nodoc:
 			def self.load str
 				new str.to_s
 			end
-			
+
 			def self.dump guid
 				return 0.chr * SIZE unless guid
 				# allow use of plain strings in place of guids.
 				guid['-'] ? parse(guid) : guid
 			end
-			
+
 			def self.parse str
 				vals = str.scan(/[a-f\d]+/i).map(&:hex)
 				if vals.length == 5
@@ -162,7 +161,7 @@ module Ole # :nodoc:
 			def format
 				"%08x-%04x-%04x-%02x%02x-#{'%02x' * 6}" % unpack(PACK)
 			end
-			
+
 			def inspect
 				"#<#{self.class}:{#{format}}>"
 			end
@@ -251,12 +250,12 @@ module Ole # :nodoc:
 			module Constants
 				NAMES.each { |num, name| const_set name, num }
 			end
-			
+
 			def self.load type, str
 				type = NAMES[type] or raise ArgumentError, 'unknown ole type - 0x%04x' % type
 				(CLASS_MAP[type] || Data).load str
 			end
-			
+
 			def self.dump type, variant
 				type = NAMES[type] or raise ArgumentError, 'unknown ole type - 0x%04x' % type
 				(CLASS_MAP[type] || Data).dump variant
@@ -264,7 +263,7 @@ module Ole # :nodoc:
 		end
 
 		include Variant::Constants
-		
+
 		# deprecated aliases, kept mostly for the benefit of ruby-msg, until
 		# i release a new version.
 		def self.load_guid str
