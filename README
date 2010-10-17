@@ -102,7 +102,6 @@ See the documentation for each class for more details.
 * case insensitive open mode would be nice
 * fix property sets a bit more. see TODO in Ole::Storage::MetaData
 * ability to zero out padding and unused blocks
-* case insensitive mode for ole/file_system?
 * better tests for mbat support.
 * further doc cleanup
 * add in place testing for jruby and ruby1.9
