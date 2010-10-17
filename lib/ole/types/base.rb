@@ -101,7 +101,10 @@ module Ole # :nodoc:
 				return nil if low == 0 and high == 0
 				# the + 0.00001 here stinks a bit...
 				seconds = (high * (1 << 32) + low) / 1e7 + 0.00001
-				EPOCH + seconds / 86400 rescue return
+				obj = EPOCH + seconds / 86400 rescue return
+				# work around home_run not preserving derived class
+				obj = new! obj.jd + obj.day_fraction - 0.5, 0, ITALY unless FileTime === obj
+				obj
 			end
 
 			# +time+ should be able to be either a Time, Date, or DateTime.
