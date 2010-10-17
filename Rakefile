@@ -53,7 +53,7 @@ spec = Gem::Specification.new do |s|
 	s.rubyforge_project = %q{ruby-ole}
 
 	s.executables = ['oletool']
-	s.files  = ['README', 'Rakefile', 'ChangeLog', 'data/propids.yaml']
+	s.files  = ['README', 'COPYING', 'Rakefile', 'ChangeLog', 'data/propids.yaml']
 	s.files += FileList['lib/**/*.rb']
 	s.files += FileList['test/test_*.rb', 'test/*.doc']
 	s.files += FileList['test/oleWithDirs.ole', 'test/test_SummaryInformation']
