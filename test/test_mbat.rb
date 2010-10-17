@@ -3,8 +3,7 @@
 $: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
-require 'ole/storage/base'
-require 'ole/storage/file_system'
+require 'ole/storage'
 require 'tempfile'
 
 class TestWriteMbat < Test::Unit::TestCase

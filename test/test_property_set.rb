@@ -3,7 +3,7 @@
 $: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
-require 'ole/types/property_set'
+require 'ole/types'
 
 class TestPropertySet < Test::Unit::TestCase
 	include Ole::Types

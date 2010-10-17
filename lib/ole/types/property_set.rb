@@ -1,6 +1,5 @@
 # encoding: ASCII-8BIT
 
-require 'ole/types'
 require 'yaml'
 
 module Ole
@@ -165,3 +164,4 @@ module Ole
 		end
 	end
 end
+

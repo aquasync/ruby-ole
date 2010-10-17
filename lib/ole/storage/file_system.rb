@@ -31,8 +31,6 @@
 #   the filesystem api.
 #
 
-require 'ole/storage'
-
 module Ole # :nodoc:
 	class Storage
 		def file

@@ -23,7 +23,7 @@
 TEST_DIR = File.dirname __FILE__
 $:.unshift "#{TEST_DIR}/../lib"
 
-require 'ole/storage/file_system'
+require 'ole/storage'
 require 'test/unit'
 
 module ExtraAssertions

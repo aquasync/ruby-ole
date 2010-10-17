@@ -3,9 +3,7 @@
 $: << File.dirname(__FILE__) + '/../lib'
 
 require 'test/unit'
-require 'ole/storage/base'
-require 'ole/storage/meta_data'
-require 'ole/storage/file_system'
+require 'ole/storage'
 
 class TestMetaData < Test::Unit::TestCase
 	def test_meta_data

@@ -80,7 +80,7 @@ desc 'Run various benchmarks'
 task :benchmark do
 	require 'benchmark'
 	require 'tempfile'
-	require 'ole/file_system'
+	require 'ole/storage'
 
 	# should probably add some read benchmarks too
 	def write_benchmark opts={}
