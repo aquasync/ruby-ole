@@ -70,7 +70,7 @@ module Ole # :nodoc:
 				end
 				y   = year + 4800
 				m   = month - 3
-				jd  = day + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045
+				jd  = day + (153 * m + 2).div(5) + 365 * y + y.div(4) - y.div(100) + y.div(400) - 32045
 				fr  = hour / 24.0 + min / 1440.0 + sec / 86400.0
 				# new! was actually new0 in older versions of ruby (<=1.8.4?)
 				# see issue #4.

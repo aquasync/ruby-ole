@@ -124,7 +124,7 @@ class RangesIO
 		# do a binary search throuh @offsets to find the active range.
 		a, c, b = 0, 0, @offsets.length
 		while a < b
-			c = (a + b) / 2
+			c = (a + b).div(2)
 			pivot = @offsets[c]
 			if pos == pivot
 				@active = c
