@@ -82,7 +82,7 @@ See the documentation for each class for more details.
 
 = TODO
 
-== 1.2.11
+== 1.2.12
 
 * internal api cleanup
 * add buffering to rangesio so that performance for small reads and writes
