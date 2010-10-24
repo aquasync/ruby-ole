@@ -1,3 +1,8 @@
+== 1.2.11.1 / 2010-10-24
+
+- Add gemspec and docs to packages so tests can pass again.
+- Build tarballs again in package task.
+
 == 1.2.11 / 2010-10-17
 
 - Add COPYING for packaging (issue #7)
