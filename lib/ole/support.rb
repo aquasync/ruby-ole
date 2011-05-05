@@ -27,7 +27,7 @@ end
 class File # :nodoc:
 	# for interface consistency with StringIO etc (rather than adding #stat
 	# to them). used by RangesIO.
-	unless File.instance_methods.include?(:size)
+	unless File.method_defined?(:size)
 		def size
 			stat.size
 		end
@@ -35,7 +35,7 @@ class File # :nodoc:
 end
 
 class Symbol # :nodoc:
-	unless Symbol.instance_methods.include?(:to_proc)
+	unless Symbol.method_defined?(:to_proc)
     def to_proc
       Proc.new { |*args| args.shift.__send__(self, *args) }
     end
