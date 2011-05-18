@@ -44,6 +44,11 @@ class TestSupport < Test::Unit::TestCase
 		# note not [6, 7] - no overlaps
 		assert_equal [6], str.indexes('||')
 	end
+
+  def test_symbol
+    array = (1..10).to_a
+    assert_equal 55, array.inject(&:+)
+  end
 end
 
 class TestIOMode < Test::Unit::TestCase
