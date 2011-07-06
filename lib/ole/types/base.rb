@@ -76,7 +76,7 @@ module Ole # :nodoc:
 				# see issue #4.
 				msg = respond_to?(:new!) ? :new! : :new0
 				send msg, jd + fr - 0.5, 0, ITALY
-			end
+			end if respond_to?(:new!) || respond_to?(:new0)
 
 			def self.from_time time
 				new(*(time.to_a[0, 6].reverse + [time.usec]))
