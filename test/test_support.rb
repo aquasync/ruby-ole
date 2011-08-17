@@ -45,10 +45,10 @@ class TestSupport < Test::Unit::TestCase
 		assert_equal [6], str.indexes('||')
 	end
 
-  def test_symbol
-    array = (1..10).to_a
-    assert_equal 55, array.inject(&:+)
-  end
+	def test_symbol
+		array = (1..10).to_a
+		assert_equal 55, array.inject(&:+)
+	end
 end
 
 class TestIOMode < Test::Unit::TestCase

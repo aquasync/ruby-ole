@@ -36,9 +36,9 @@ end
 
 class Symbol # :nodoc:
 	unless Symbol.method_defined?(:to_proc)
-    def to_proc
-      Proc.new { |*args| args.shift.__send__(self, *args) }
-    end
+		def to_proc
+			Proc.new { |*args| args.shift.__send__(self, *args) }
+		end
 	end
 end
 
