@@ -1,3 +1,15 @@
+== 1.2.11.2 / 2011-09-07
+
+- Remove empty dirents after constructing tree (fixes non-contiguous
+  allocation table usage).
+- Fix fallback Symbol#to_proc to match activesupport definition in case
+  we get loaded first (github #2, lazylester).
+- Use method_defined? for fallback guards to support newer versions of
+  ruby (jocker).
+- Add guard on FileTime#initialize to skip for newer versions of ruby.
+  Missing required methods, but optimization no longer relevant
+  anyway (github #4, sagmor).
+
 == 1.2.11.1 / 2010-10-24
 
 - Add gemspec and docs to packages so tests can pass again.
