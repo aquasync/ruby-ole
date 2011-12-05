@@ -1,6 +1,8 @@
 # encoding: ASCII-8BIT
 
-require 'iconv'
+unless ''.respond_to? :encoding
+  require 'iconv'
+end
 require 'date'
 
 require 'ole/base'
@@ -38,21 +40,34 @@ module Ole # :nodoc:
 		end
 
 		# for VT_LPWSTR
-		class Lpwstr < String
-			FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
-			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
-
-			def self.load str
-				new FROM_UTF16.iconv(str).chomp(0.chr)
+		if ''.respond_to? :encoding
+			class Lpwstr < String
+				UTF_16LE = Encoding::UTF_16LE
+				UTF_8 = Encoding::UTF_8
+				ASCII_8BIT = Encoding::ASCII_8BIT
+				
+				def self.load str
+					new str.force_encoding(UTF_16LE).encode(UTF_8).chomp("\x00")
+				end
+	
+				def self.dump str
+					str.encode(UTF_16LE).force_encoding(ASCII_8BIT)
+				end
 			end
-
-			def self.dump str
-				# need to append nulls?
-				data = TO_UTF16.iconv str
-				# not sure if this is the recommended way to do it, but I want to treat
-				# the resulting utf16 data as regular bytes, not characters.
-				data.force_encoding Encoding::ASCII_8BIT if data.respond_to? :encoding
-				data
+		else
+			class Lpwstr < String
+				FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
+				TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
+	
+	
+				def self.load str
+					new FROM_UTF16.iconv(str).chomp(0.chr)
+				end
+	
+				def self.dump str
+					# need to append nulls?
+					TO_UTF16.iconv str
+				end
 			end
 		end
 
@@ -276,9 +291,5 @@ module Ole # :nodoc:
 		def self.load_time str
 			Variant.load VT_FILETIME, str
 		end
-
-		FROM_UTF16 = Lpwstr::FROM_UTF16
-		TO_UTF16 = Lpwstr::TO_UTF16
 	end
 end
-
