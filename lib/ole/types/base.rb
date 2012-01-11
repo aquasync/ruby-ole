@@ -43,12 +43,16 @@ module Ole # :nodoc:
 			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
 
 			def self.load str
-				new FROM_UTF16.iconv(str).chomp(0.chr)
+				str.respond_to?(:encode) ?
+					new(str.encode(Encoding::UTF_8, Encoding::UTF_16LE).chomp(0.chr)) :
+					new(FROM_UTF16.iconv(str).chomp(0.chr))
 			end
 
 			def self.dump str
 				# need to append nulls?
-				data = TO_UTF16.iconv str
+				data = str.respond_to?(:encode) ?
+					str.encode(Encoding::UTF_16LE) :
+					TO_UTF16.iconv(str)
 				# not sure if this is the recommended way to do it, but I want to treat
 				# the resulting utf16 data as regular bytes, not characters.
 				data.force_encoding Encoding::ASCII_8BIT if data.respond_to? :encoding
