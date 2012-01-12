@@ -1,4 +1,5 @@
-Kernel.load File.dirname(__FILE__) + '/lib/ole/storage/version.rb'
+$:.unshift (File.dirname(__FILE__) + '/lib')
+require 'ole/storage/version'
 
 PKG_NAME = 'ruby-ole'
 PKG_VERSION = Ole::Storage::VERSION
