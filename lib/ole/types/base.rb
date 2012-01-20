@@ -91,7 +91,7 @@ module Ole # :nodoc:
 			SIZE = 8
 
 			# DateTime.new is slow... faster version for FileTime
-			def self.new year, month, day, hour=0, min=0, sec=0, usec=0
+			def self.new year, month, day, hour=0, min=0, sec=0
 				# DateTime will remove leap and leap-leap seconds
 				sec = 59 if sec > 59
 				if month <= 2
@@ -109,9 +109,7 @@ module Ole # :nodoc:
 			end if respond_to?(:new!) || respond_to?(:new0)
 
 			def self.from_time time
-				time_a = time.to_a[0, 6].reverse
-				time_a << time.usec unless time.respond_to? :to_datetime
-				new(*time_a)
+				new(*time.to_a[0, 6].reverse)
 			end
 
 			def self.now
