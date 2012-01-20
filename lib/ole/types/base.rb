@@ -1,6 +1,7 @@
 # encoding: ASCII-8BIT
 
-require 'iconv'
+ICONV_DEPRECATED = ''.respond_to? :encode
+require 'iconv' unless ICONV_DEPRECATED
 require 'date'
 
 require 'ole/base'
@@ -13,6 +14,17 @@ module Ole # :nodoc:
 	# It also defines all the variant type constants, and symbolic names.
 	#
 	module Types
+
+		class Iconv
+			def initialize(to, from)
+				@to, @from = to, from
+			end
+
+			def iconv(str)
+				str.encode(@to, @from)
+			end
+		end if ICONV_DEPRECATED
+
 		# for anything that we don't have serialization code for
 		class Data < String
 			def self.load str
@@ -43,12 +55,16 @@ module Ole # :nodoc:
 			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
 
 			def self.load str
-				new FROM_UTF16.iconv(str).chomp(0.chr)
+				ICONV_DEPRECATED ?
+					new(str.encode(Encoding::UTF_8, Encoding::UTF_16LE).chomp(0.chr)) :
+					new(FROM_UTF16.iconv(str).chomp(0.chr))
 			end
 
 			def self.dump str
 				# need to append nulls?
-				data = TO_UTF16.iconv str
+				data = ICONV_DEPRECATED ?
+					str.encode(Encoding::UTF_16LE) :
+					TO_UTF16.iconv(str)
 				# not sure if this is the recommended way to do it, but I want to treat
 				# the resulting utf16 data as regular bytes, not characters.
 				data.force_encoding Encoding::ASCII_8BIT if data.respond_to? :encoding
@@ -79,7 +95,9 @@ module Ole # :nodoc:
 			end if respond_to?(:new!) || respond_to?(:new0)
 
 			def self.from_time time
-				new(*(time.to_a[0, 6].reverse + [time.usec]))
+				time_a = time.to_a[0, 6].reverse
+				time_a << time.usec unless time.respond_to? :to_datetime
+				new(*time_a)
 			end
 
 			def self.now
