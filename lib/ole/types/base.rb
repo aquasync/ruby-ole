@@ -1,7 +1,5 @@
 # encoding: ASCII-8BIT
 
-ICONV_DEPRECATED = ''.respond_to? :encode
-require 'iconv' unless ICONV_DEPRECATED
 require 'date'
 
 require 'ole/base'
@@ -14,17 +12,6 @@ module Ole # :nodoc:
 	# It also defines all the variant type constants, and symbolic names.
 	#
 	module Types
-
-		class Iconv
-			def initialize(to, from)
-				@to, @from = to, from
-			end
-
-			def iconv(str)
-				str.encode(@to, @from)
-			end
-		end if ICONV_DEPRECATED
-
 		# for anything that we don't have serialization code for
 		class Data < String
 			def self.load str
@@ -49,26 +36,53 @@ module Ole # :nodoc:
 			end
 		end
 
-		# for VT_LPWSTR
-		class Lpwstr < String
-			FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
-			TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
+		if ''.respond_to? :encode
+			# NOTE: only here in the interim to preserve behaviour of
+			# FROM/TO_UTF16 constants for ruby-msg. 
+			class Iconv # :nodoc:
+				def initialize(to, from)
+					@to, @from = to, from
+				end
 
-			def self.load str
-				ICONV_DEPRECATED ?
-					new(str.encode(Encoding::UTF_8, Encoding::UTF_16LE).chomp(0.chr)) :
-					new(FROM_UTF16.iconv(str).chomp(0.chr))
+				def iconv(str)
+					str.encode(@to, @from)
+				end
 			end
 
-			def self.dump str
-				# need to append nulls?
-				data = ICONV_DEPRECATED ?
-					str.encode(Encoding::UTF_16LE) :
-					TO_UTF16.iconv(str)
-				# not sure if this is the recommended way to do it, but I want to treat
-				# the resulting utf16 data as regular bytes, not characters.
-				data.force_encoding Encoding::ASCII_8BIT if data.respond_to? :encoding
-				data
+			# for VT_LPWSTR
+			class Lpwstr < String
+				FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
+				TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
+
+				def self.load str
+					new str.encode(Encoding::UTF_8, Encoding::UTF_16LE).chomp(0.chr)
+				end
+
+				def self.dump str
+					# need to append nulls?
+					data = str.encode(Encoding::UTF_16LE)
+					# not sure if this is the recommended way to do it, but I want to treat
+					# the resulting utf16 data as regular bytes, not characters.
+					data.force_encoding Encoding::ASCII_8BIT
+					data
+				end
+			end
+		else
+			require 'iconv'
+
+			# for VT_LPWSTR
+			class Lpwstr < String
+				FROM_UTF16 = Iconv.new 'utf-8', 'utf-16le'
+				TO_UTF16   = Iconv.new 'utf-16le', 'utf-8'
+
+				def self.load str
+					new FROM_UTF16.iconv(str).chomp(0.chr)
+				end
+
+				def self.dump str
+					# need to append nulls?
+					TO_UTF16.iconv str
+				end
 			end
 		end
 
