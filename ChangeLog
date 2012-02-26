@@ -1,3 +1,9 @@
+== 1.2.11.3 / 2012-02-25
+
+- Various fixes for ruby 1.9.3 - handle iconv deprecation and
+  fix FileTime.from_time (github #7, brawnski).
+- Avoid constant redefinition warning in gemspec.
+
 == 1.2.11.2 / 2011-09-07
 
 - Remove empty dirents after constructing tree (fixes non-contiguous
