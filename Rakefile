@@ -1,8 +1,5 @@
 require 'rubygems'
-require 'rake/rdoctask'
 require 'rake/testtask'
-require 'rake/packagetask'
-require 'rake/gempackagetask'
 
 require 'rbconfig'
 require 'fileutils'
@@ -31,20 +28,29 @@ rescue LoadError
 	# Rcov not available
 end
 
-Rake::RDocTask.new do |t|
-	t.rdoc_dir = 'doc'
-	t.rdoc_files.include 'lib/**/*.rb'
-	t.rdoc_files.include 'README', 'ChangeLog'
-	t.title    = "#{PKG_NAME} documentation"
-	t.options += %w[--line-numbers --inline-source --tab-width 2]
-	t.main	   = 'README'
+begin
+	require 'rdoc/task'
+	RDoc::Task.new do |t|
+		t.rdoc_dir = 'doc'
+		t.rdoc_files.include 'lib/**/*.rb'
+		t.rdoc_files.include 'README', 'ChangeLog'
+		t.title    = "#{PKG_NAME} documentation"
+		t.options += %w[--line-numbers --inline-source --tab-width 2]
+		t.main	   = 'README'
+	end
+rescue LoadError
+	# RDoc not available or too old (<2.4.2)
 end
 
-Rake::GemPackageTask.new(spec) do |t|
-	t.gem_spec = spec
-	t.need_tar = true
-	t.need_zip = false
-	t.package_dir = 'build'
+begin
+	require 'rubygems/package_task'
+	Gem::PackageTask.new(spec) do |t|
+		t.need_tar = true
+		t.need_zip = false
+		t.package_dir = 'build'
+	end
+rescue LoadError
+	# RubyGems too old (<1.3.2)
 end
 
 desc 'Run various benchmarks'
