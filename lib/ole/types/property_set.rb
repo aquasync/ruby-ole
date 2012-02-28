@@ -1,7 +1,5 @@
 # encoding: ASCII-8BIT
 
-require 'yaml'
-
 module Ole
 	module Types
 		#
@@ -24,8 +22,45 @@ module Ole
 			}
 
 			# define a smattering of the property set guids. 
-			DATA = YAML.load_file(File.dirname(__FILE__) + '/../../../data/propids.yaml').
-				inject({}) { |hash, (key, value)| hash.update Clsid.parse(key) => value }
+			DATA = {
+				Clsid.parse('{f29f85e0-4ff9-1068-ab91-08002b27b3d9}') => ['FMTID_SummaryInformation', {
+					2  => 'doc_title',
+					3  => 'doc_subject',
+					4  => 'doc_author',
+					5  => 'doc_keywords',
+					6  => 'doc_comments',
+					7  => 'doc_template',
+					8  => 'doc_last_author',
+					9  => 'doc_rev_number',
+					10 => 'doc_edit_time',
+					11 => 'doc_last_printed',
+					12 => 'doc_created_time',
+					13 => 'doc_last_saved_time',
+					14 => 'doc_page_count',
+					15 => 'doc_word_count',
+					16 => 'doc_char_count',
+					18 => 'doc_app_name',
+					19 => 'security'
+				}],
+				Clsid.parse('{d5cdd502-2e9c-101b-9397-08002b2cf9ae}') => ['FMTID_DocSummaryInfo', {
+					2  => 'doc_category',
+					3  => 'doc_presentation_target',
+					4  => 'doc_byte_count',
+					5  => 'doc_line_count',
+					6  => 'doc_para_count',
+					7  => 'doc_slide_count',
+					8  => 'doc_note_count',
+					9  => 'doc_hidden_count',
+					10 => 'mmclips',
+					11 => 'scale_crop',
+					12 => 'heading_pairs',
+					13 => 'doc_part_titles',
+					14 => 'doc_manager',
+					15 => 'doc_company',
+					16 => 'links_up_to_date'
+				}],
+				Clsid.parse('{d5cdd505-2e9c-101b-9397-08002b2cf9ae}') => ['FMTID_UserDefinedProperties', {}]
+			}
 
 			# create an inverted map of names to guid/key pairs
 			PROPERTY_MAP = DATA.inject({}) do |h1, (guid, data)|

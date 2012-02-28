@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
 	s.rubyforge_project = %q{ruby-ole}
 
 	s.executables = ['oletool']
-	s.files  = ['README', 'COPYING', 'Rakefile', 'ChangeLog', 'ruby-ole.gemspec', 'data/propids.yaml']
+	s.files  = ['README', 'COPYING', 'Rakefile', 'ChangeLog', 'ruby-ole.gemspec']
 	s.files += Dir.glob('lib/**/*.rb')
 	s.files += Dir.glob('test/{test_*.rb,*.doc,oleWithDirs.ole,test_SummaryInformation}')
 	s.files += Dir.glob('bin/*')
