@@ -1,3 +1,11 @@
+== 1.2.11.4 / 2012-07-03
+
+- Embed PropertySet meta data GUIDs and field lists, to avoid hitting the
+  filesystem and remove dependency on YAML.
+- Update Rakefile to avoid warnings about both deprecated tasks and space
+  before parentheses.
+- Remove Dirent#children=.
+
 == 1.2.11.3 / 2012-02-25
 
 - Various fixes for ruby 1.9.3 - handle iconv deprecation and
