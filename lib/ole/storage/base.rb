@@ -135,7 +135,7 @@ module Ole # :nodoc:
 				def to_tree idx=0
 					return [] if idx == Dirent::EOT
 					d = self[idx]
-					d.children = to_tree d.child
+					to_tree(d.child).each { |child| d << child }
 					raise FormatError, "directory #{d.inspect} used twice" if d.idx
 					d.idx = idx
 					to_tree(d.prev) + [d] + to_tree(d.next)
@@ -784,11 +784,6 @@ module Ole # :nodoc:
 					map[name] = self
 				end
 				@name = name
-			end
-
-			def children= children
-				@children = []
-				children.each { |child| self << child }
 			end
 
 			def open mode='r'
