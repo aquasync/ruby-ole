@@ -53,7 +53,7 @@ end
 
 class TestIOMode < Test::Unit::TestCase
 	def mode s
-		IO::Mode.new s
+		Ole::IOMode.new s
 	end
 
 	def test_parse
@@ -83,9 +83,9 @@ class TestIOMode < Test::Unit::TestCase
 	end
 	
 	def test_inspect
-		assert_equal '#<IO::Mode rdonly>', IO::Mode.new('r').inspect
-		assert_equal '#<IO::Mode rdwr|creat|trunc|binary>', IO::Mode.new('wb+').inspect
-		assert_equal '#<IO::Mode wronly|creat|append>', IO::Mode.new('a').inspect
+		assert_equal '#<Ole::IOMode rdonly>', mode('r').inspect
+		assert_equal '#<Ole::IOMode rdwr|creat|trunc|binary>', mode('wb+').inspect
+		assert_equal '#<Ole::IOMode wronly|creat|append>', mode('a').inspect
 	end
 end
 

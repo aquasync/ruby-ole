@@ -57,7 +57,7 @@ module Ole # :nodoc:
 			# io.writeable? otherwise.
 			@writeable = begin
 				if mode
-					IO::Mode.new(mode).writeable?
+					IOMode.new(mode).writeable?
 				else
 					@io.flush
 					# this is for the benefit of ruby-1.9

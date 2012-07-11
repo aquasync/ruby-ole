@@ -97,7 +97,7 @@ class TestRangesIO < Test::Unit::TestCase
 		end
 		# will be fine
 		@io = RangesIONonResizeable.new(StringIO.new, 'w', :ranges => [])
-		assert_equal '#<IO::Mode wronly|creat>', @io.instance_variable_get(:@mode).inspect
+		assert_equal '#<Ole::IOMode wronly|creat>', @io.instance_variable_get(:@mode).inspect
 	end
 end
 

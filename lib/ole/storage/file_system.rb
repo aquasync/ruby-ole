@@ -151,7 +151,7 @@ module Ole # :nodoc:
 			end
 
 			def open path, mode='r', &block
-				if IO::Mode.new(mode).create?
+				if IOMode.new(mode).create?
 					begin
 						dirent = dirent_from_path path
 					rescue Errno::ENOENT

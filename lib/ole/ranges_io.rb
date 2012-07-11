@@ -1,6 +1,6 @@
 # encoding: ASCII-8BIT
 
-# need IO::Mode
+# need Ole::IOMode
 require 'ole/support'
 
 #
@@ -57,7 +57,7 @@ class RangesIO
 		mode, params = 'r', mode if Hash === mode
 		ranges = params[:ranges]
 		@params = {:close_parent => false}.merge params
-		@mode = IO::Mode.new mode
+		@mode = Ole::IOMode.new mode
 		@io = io
 		# initial position in the file
 		@pos = 0
@@ -255,7 +255,7 @@ end
 class RangesIONonResizeable < RangesIO # :nodoc:
 	def initialize io, mode='r', params={}
 		mode, params = 'r', mode if Hash === mode
-		flags = IO::Mode.new(mode).flags & ~IO::TRUNC
+		flags = Ole::IOMode.new(mode).flags & ~IO::TRUNC
 		super io, flags, params
 	end
 end

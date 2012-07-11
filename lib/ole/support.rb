@@ -165,34 +165,8 @@ module RecursivelyEnumerable # :nodoc:
 	end
 end
 
-# can include File::Constants
-class IO
-	# this is for jruby
-	include File::Constants unless defined?(RDONLY)
-
-	# nabbed from rubinius, and modified
-	def self.parse_mode mode
-		ret = 0
-
-		case mode[0, 1]
-		when 'r'; ret |= RDONLY
-		when 'w'; ret |= WRONLY | CREAT | TRUNC
-		when 'a'; ret |= WRONLY | CREAT | APPEND
-		else raise ArgumentError, "illegal access mode #{mode}"
-		end
-
-		(1...mode.length).each do |i|
-			case mode[i, 1]
-			when '+'; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
-			when 'b'; ret |= Mode::BINARY
-			else raise ArgumentError, "illegal access mode #{mode}"
-			end
-		end
-	
-		ret
-	end
-
-	class Mode
+module Ole
+	class IOMode
 		# ruby 1.9 defines binary as 0, which isn't very helpful.
 		# its 4 in rubinius. no longer using
 		#
@@ -207,9 +181,31 @@ class IO
 		include Constants
 		NAMES = %w[rdonly wronly rdwr creat trunc append binary]
 
+		# nabbed from rubinius, and modified
+		def self.parse_mode mode
+			ret = 0
+
+			case mode[0, 1]
+			when 'r'; ret |= RDONLY
+			when 'w'; ret |= WRONLY | CREAT | TRUNC
+			when 'a'; ret |= WRONLY | CREAT | APPEND
+			else raise ArgumentError, "illegal access mode #{mode}"
+			end
+
+			(1...mode.length).each do |i|
+				case mode[i, 1]
+				when '+'; ret = (ret & ~(RDONLY | WRONLY)) | RDWR
+				when 'b'; ret |= BINARY
+				else raise ArgumentError, "illegal access mode #{mode}"
+				end
+			end
+
+			ret
+		end
+
 		attr_reader :flags
 		def initialize flags
-			flags = IO.parse_mode flags.to_str if flags.respond_to? :to_str
+			flags = self.class.parse_mode flags.to_str if flags.respond_to? :to_str
 			raise ArgumentError, "invalid flags - #{flags.inspect}" unless Fixnum === flags
 			@flags = flags
 		end
@@ -251,7 +247,7 @@ class IO
 =end
 
 		def inspect
-			names = NAMES.map { |name| name if (flags & Mode.const_get(name.upcase)) != 0 }
+			names = NAMES.map { |name| name if (flags & IOMode.const_get(name.upcase)) != 0 }
 			names.unshift 'rdonly' if (flags & 0x3) == 0
 			"#<#{self.class} #{names.compact * '|'}>"
 		end
