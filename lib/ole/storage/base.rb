@@ -50,21 +50,16 @@ module Ole # :nodoc:
 				raise ArgumentError, 'unable to specify mode string with io object' if mode
 				[false, arg]
 			end
-			# do we have this file opened for writing? don't know of a better way to tell
-			# (unless we parse the mode string in the open case)
-			# hmmm, note that in ruby 1.9 this doesn't work anymore. which is all the more
-			# reason to use mode string parsing when available, and fall back to something like
-			# io.writeable? otherwise.
+			# do we have this file opened for writing? use mode when provided,
+			# otherwise try no-op methods which will raise if read-only
 			@writeable = begin
 				if mode
 					IOMode.new(mode).writeable?
 				else
+					# works on mri 1.8 & jruby
 					@io.flush
-					# this is for the benefit of ruby-1.9
-					# generates warnings on jruby though... :/
-					if RUBY_PLATFORM != 'java' and @io.respond_to?(:syswrite)
-						@io.syswrite('')
-					end
+					# works on mri 1.9 & rubinius
+					@io.write_nonblock('') if @io.respond_to?(:write_nonblock)
 					true
 				end
 			rescue IOError
