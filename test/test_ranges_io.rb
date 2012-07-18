@@ -29,6 +29,14 @@ class TestRangesIO < Test::Unit::TestCase
 		assert_equal true, f.closed?
 	end
 
+	def test_combine
+		ranges = [[0, 100], 100...200, [200, 100]]
+		io = RangesIO.new STDOUT, 'r+', :ranges => ranges
+		assert_equal [[0, 300]], io.ranges
+		io = RangesIO.new STDOUT, 'r+', :ranges => ranges, :combine => false
+		assert_equal [[0, 100], [100, 100], [200, 100]], io.ranges
+	end
+
 	def test_basics
 		assert_equal 160, @io.size
 		assert_match %r{size=160}, @io.inspect
@@ -44,6 +52,8 @@ class TestRangesIO < Test::Unit::TestCase
 		@io.seek(-10, IO::SEEK_CUR)
 		@io.pos += 20
 		assert_equal 70, @io.pos
+		@io.rewind
+		assert_equal 0, @io.pos
 		# seeking past the end doesn't throw an exception for normal
 		# files, even in read mode, but RangesIO does
 		assert_raises(Errno::EINVAL) { @io.seek 500 }
