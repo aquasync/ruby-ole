@@ -36,15 +36,6 @@ class TestSupport < Test::Unit::TestCase
 		assert_equal str, dst.string
 	end
 
-	def test_string
-		str = "aa aa ||| aa aa"
-		assert_equal [0, 3, 10, 13], str.indexes('aa')
-		# this is mostly a check that regexp quote is used.
-		assert_equal [6, 7, 8], str.indexes('|')
-		# note not [6, 7] - no overlaps
-		assert_equal [6], str.indexes('||')
-	end
-
 	def test_symbol
 		array = (1..10).to_a
 		assert_equal 55, array.inject(&:+)

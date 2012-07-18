@@ -11,14 +11,6 @@ require 'stringio'
 require 'enumerator'
 
 class String # :nodoc:
-	# plural of String#index. returns all offsets of +string+. rename to indices?
-	#
-	# note that it doesn't check for overlapping values.
-	def indexes string
-		# in some ways i'm surprised that $~ works properly in this case...
-		to_enum(:scan, /#{Regexp.quote string}/m).map { $~.begin 0 }
-	end
-
 	def each_chunk size
 		(length / size.to_f).ceil.times { |i| yield self[i * size, size] }
 	end
