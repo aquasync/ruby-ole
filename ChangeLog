@@ -1,3 +1,10 @@
+== 1.2.11.5 / 2012-11-06
+
+- Fix breakage of IO.parse_mode on Rubinius (issue #10).
+- Make tests pass on rubinius (issue #11).
+- Improve RangesIO test coverage.
+- Don't warn when mbat_start is AVAIL instead of EOC (github #9).
+
 == 1.2.11.4 / 2012-07-03
 
 - Embed PropertySet meta data GUIDs and field lists, to avoid hitting the
