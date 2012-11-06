@@ -385,7 +385,7 @@ module Ole # :nodoc:
 				# 3 for this value. 
 				# transacting_signature != "\x00" * 4 or
 				if threshold != 4096 or
-					 num_mbat == 0 && mbat_start != AllocationTable::EOC or
+					 num_mbat == 0 && ![AllocationTable::EOC, AllocationTable::AVAIL].include?(mbat_start) or
 					 reserved != "\x00" * 6
 					Log.warn "may not be a valid OLE2 structured storage file"
 				end
