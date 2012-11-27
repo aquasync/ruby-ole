@@ -58,8 +58,13 @@ module Ole # :nodoc:
 				else
 					# works on mri 1.8 & jruby
 					@io.flush
-					# works on mri 1.9 & rubinius
-					@io.write_nonblock('') if @io.respond_to?(:write_nonblock)
+					begin
+						# works on mri 1.9 & rubinius, throws EBADF on windows
+						@io.write_nonblock('') if @io.respond_to?(:write_nonblock)
+					rescue Errno::EBADF
+						# for windows
+						@io.syswrite('');
+					end
 					true
 				end
 			rescue IOError
