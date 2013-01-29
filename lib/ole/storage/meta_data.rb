@@ -76,8 +76,8 @@ module Ole
 				# byte_order: 0xffe
 				# windows_version: 0x00000a03 (win31 apparently)
 				# marker: 0xffffffff
-				compobj_version, byte_order, windows_version, marker, clsid =
-					data.unpack("vvVVa#{Types::Clsid::SIZE}")
+				# compobj_version, byte_order, windows_version, marker, clsid =
+				# 	data.unpack("vvVVa#{Types::Clsid::SIZE}")
 				strings = []
 				i = 28
 				while i < data.length
@@ -137,7 +137,7 @@ module Ole
 
 			def method_missing name, *args, &block
 				return super unless args.empty?
-				pair = Types::PropertySet::PROPERTY_MAP[name.to_s] or return super
+				return super unless Types::PropertySet::PROPERTY_MAP[name.to_s]
 				self[name]
 			end
 		end

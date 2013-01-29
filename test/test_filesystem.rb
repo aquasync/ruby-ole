@@ -594,20 +594,24 @@ class OleFsFileMutatingTest < Test::Unit::TestCase
 		Ole::Storage.open(@io) {
 			|zf|
 
+			blockCalled = nil
 			zf.file.open("test_open_write_entry", "w") {
 				|f|
 				blockCalled = true
 				f.write "This is what I'm writing"
 			}
+			assert(blockCalled)
 			assert_equal("This is what I'm writing",
 										zf.file.read("test_open_write_entry"))
 
+			blockCalled = nil
 			# Test with existing entry
 			zf.file.open("file1", "w") {
 				|f|
 				blockCalled = true
 				f.write "This is what I'm writing too"
 			}
+			assert(blockCalled)
 			assert_equal("This is what I'm writing too",
 										zf.file.read("file1"))
 		}

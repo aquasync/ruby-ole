@@ -68,7 +68,7 @@ module Ole
 			end
 
 			module Constants
-				DATA.each { |guid, (name, map)| const_set name, guid }
+				DATA.each { |guid, (name, _)| const_set name, guid }
 			end
 
 			include Constants
