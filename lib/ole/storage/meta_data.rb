@@ -137,7 +137,7 @@ module Ole
 
 			def method_missing name, *args, &block
 				return super unless args.empty?
-				pair = Types::PropertySet::PROPERTY_MAP[name.to_s] or return super
+				Types::PropertySet::PROPERTY_MAP[name.to_s] or return super
 				self[name]
 			end
 		end
