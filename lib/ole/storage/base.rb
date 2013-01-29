@@ -229,7 +229,6 @@ module Ole # :nodoc:
 			# delete a lot of stuff, and free up trailing blocks, the file size never shrinks. this can
 			# be fixed easily, add an io truncate
 			@bbat.truncate!
-			before = @io.size
 			@io.truncate @bbat.block_size * (@bbat.length + 1)
 			while true
 				# get total bbat size. equivalent to @bbat.to_s.length, but for the factoring in of
