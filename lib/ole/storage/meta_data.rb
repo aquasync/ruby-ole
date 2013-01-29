@@ -76,8 +76,8 @@ module Ole
 				# byte_order: 0xffe
 				# windows_version: 0x00000a03 (win31 apparently)
 				# marker: 0xffffffff
-				compobj_version, byte_order, windows_version, marker, clsid =
-					data.unpack("vvVVa#{Types::Clsid::SIZE}")
+				# compobj_version, byte_order, windows_version, marker, clsid =
+				# 	data.unpack("vvVVa#{Types::Clsid::SIZE}")
 				strings = []
 				i = 28
 				while i < data.length
