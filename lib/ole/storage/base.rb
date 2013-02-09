@@ -831,7 +831,7 @@ module Ole # :nodoc:
 			end
 
 			def each_child(&block)
-				@children.each(&block)
+				@children.each(&block) if dir?
 			end
 
 			# flattens the tree starting from here into +dirents+. note it modifies its argument.
