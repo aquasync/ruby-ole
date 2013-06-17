@@ -195,6 +195,11 @@ class RangesIO
 	end
 
 	def write data
+		# duplicates object to avoid side effects for the caller, but do so only if
+		# encoding isn't already ASCII-8BIT (slight optimization)
+		unless data.encoding == Encoding::ASCII_8BIT
+			data = data.dup.force_encoding(Encoding::ASCII_8BIT)
+		end
 		return 0 if data.empty?
 		data_pos = 0
 		# if we don't have room, we can use the truncate hook to make more space.
