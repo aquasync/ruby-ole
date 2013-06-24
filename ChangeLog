@@ -1,3 +1,11 @@
+== 1.2.11.7 / 2013-06-24
+
+- Various encoding fixes to make tests pass on current rubies.
+- Fix RangesIO#write behaviour when passed an encoded string (github #14,
+  romuloceccon).
+- Fix Dirent#each_child attempting iteration on file children (github #13).
+- Unused variable fixes to avoid warnings (github #12, kachick).
+
 == 1.2.11.6 / 2012-12-10
 
 - Fix breakage of writable IO stream detection on Windows (github #11).
