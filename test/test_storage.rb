@@ -217,25 +217,5 @@ class TestStorageWrite < Test::Unit::TestCase
 			assert_raises(ArgumentError) { Ole::Storage::Dirent.new ole, :type => :bogus }
 		end
 	end
-	
-	def test_write_utf8_string
-		tmp_file = "#{TEST_DIR}/encoding.tmp"
-		begin
-			Ole::Storage.open File.open(tmp_file, 'wb+') do |ole|
-				ole.file.open '1', 'w' do |writer|
-					writer.write("programação ")
-					writer.write("ruby")
-				end
-			end
-				
-			Ole::Storage.open File.open(tmp_file, 'rb') do |ole|
-				ole.file.open '1', 'r' do |reader|
-					assert_equal("programação ruby", reader.read.force_encoding('UTF-8'))
-				end
-			end
-		ensure
-			FileUtils.rm(tmp_file) if File.exist?(tmp_file)
-		end
-	end
 end
 

@@ -1,4 +1,5 @@
 #! /usr/bin/ruby
+# encoding: ASCII-8BIT
 
 #
 # = NOTE
@@ -564,10 +565,9 @@ class OleFsFileStatTest < Test::Unit::TestCase
 	# an additional test i added for coverage. i've tried to make the inspect
 	# string on the ole stat match that of the regular one.
 	def test_inspect
-		expect = '#<Ole::Storage::FileClass::Stat ino=0, uid=0, size=72, rdev=0, nlink=1, dev=0, blocks=2, gid=0, ftype=file, blksize=64>'
-		# normalize them, as instance_variables order is undefined
+		# normalize, as instance_variables order is undefined
 		normalize = proc { |s| s[/ (.*)>$/, 1].split(', ').sort.join(', ') }
-		assert_equal normalize[expect], normalize[@ole.file.stat('file1').inspect]
+		assert_match %r{blocks=2.*ftype=file.*size=72}, normalize[@ole.file.stat('file1').inspect]
 	end
 end
 
@@ -903,6 +903,24 @@ class OleUnicodeTest < Test::Unit::TestCase
 				warn 'skipping assertion due to broken String#hash'
 			else
 				assert_equal 'Skills', ole.file.read(resume).split(': ', 2).first
+			end
+		end
+	end
+
+	def test_write_utf8_string
+		programmer = "programa\xC3\xA7\xC3\xA3o "
+		programmer.force_encoding Encoding::UTF_8 if programmer.respond_to? :encoding
+		Ole::Storage.open @io do |ole|
+			ole.file.open '1', 'w' do |writer|
+				writer.write(programmer)
+				writer.write('ruby')
+			end
+		end
+		Ole::Storage.open @io do |ole|
+			ole.file.open '1', 'r' do |reader|
+				s = reader.read
+				s = s.force_encoding('UTF-8') if s.respond_to?(:encoding)
+				assert_equal(programmer + 'ruby', s)
 			end
 		end
 	end

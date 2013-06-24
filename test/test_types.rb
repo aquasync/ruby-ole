@@ -1,4 +1,5 @@
 #! /usr/bin/ruby
+# encoding: ASCII-8BIT
 
 $: << File.dirname(__FILE__) + '/../lib'
 

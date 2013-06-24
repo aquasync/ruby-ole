@@ -50,6 +50,8 @@ module Ole # :nodoc:
 				raise ArgumentError, 'unable to specify mode string with io object' if mode
 				[false, arg]
 			end
+			# force encoding, to avoid picking up source encoding with StringIO or files in text mode
+			@io.set_encoding Encoding::ASCII_8BIT if @io.respond_to?(:set_encoding)
 			# do we have this file opened for writing? use mode when provided,
 			# otherwise try no-op methods which will raise if read-only
 			@writeable = begin

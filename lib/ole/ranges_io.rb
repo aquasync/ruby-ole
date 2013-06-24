@@ -197,7 +197,7 @@ class RangesIO
 	def write data
 		# duplicates object to avoid side effects for the caller, but do so only if
 		# encoding isn't already ASCII-8BIT (slight optimization)
-		unless data.encoding == Encoding::ASCII_8BIT
+		if data.respond_to?(:encoding) and data.encoding != Encoding::ASCII_8BIT
 			data = data.dup.force_encoding(Encoding::ASCII_8BIT)
 		end
 		return 0 if data.empty?
