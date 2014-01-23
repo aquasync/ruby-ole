@@ -15,17 +15,14 @@ Rake::TestTask.new do |t|
 end
 
 begin
-	require 'rcov/rcovtask'
-	# NOTE: this will not do anything until you add some tests
-	desc "Create a cross-referenced code coverage report"
-	Rcov::RcovTask.new do |t|
-		t.test_files = FileList['test/test*.rb']
-		t.ruby_opts << "-Ilib" # in order to use this rcov
-		t.rcov_opts << "--xrefs"  # comment to disable cross-references
+	Rake::TestTask.new(:coverage) do |t|
+		t.test_files = FileList["test/test_*.rb"]
+		t.warning = true
 		t.verbose = true
+		t.ruby_opts = ['-rsimplecov -e "SimpleCov.start; load(ARGV.shift)"']
 	end
 rescue LoadError
-	# Rcov not available
+	# SimpleCov not available
 end
 
 begin
