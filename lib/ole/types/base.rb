@@ -263,7 +263,6 @@ module Ole # :nodoc:
 				0x0047 => 'VT_CF',
 				0x0048 => 'VT_CLSID',
 				0x0fff => 'VT_ILLEGALMASKED',
-				0x0fff => 'VT_TYPEMASK',
 				0x1000 => 'VT_VECTOR',
 				0x2000 => 'VT_ARRAY',
 				0x4000 => 'VT_BYREF',
@@ -282,6 +281,10 @@ module Ole # :nodoc:
 
 			module Constants
 				NAMES.each { |num, name| const_set name, num }
+				# VT_TYPEMASK has the same value as VT_ILLEGALMASKED. Keep the latter in the
+				# NAMES hash so that it will be used when mapping a concrete type to display
+				# string, but still define this constant here for other uses
+				VT_TYPEMASK = 0x0fff
 			end
 
 			def self.load type, str
