@@ -30,10 +30,10 @@ begin
 	RDoc::Task.new do |t|
 		t.rdoc_dir = 'doc'
 		t.rdoc_files.include 'lib/**/*.rb'
-		t.rdoc_files.include 'README', 'ChangeLog'
+		t.rdoc_files.include 'README.rdoc', 'ChangeLog'
 		t.title    = "#{PKG_NAME} documentation"
 		t.options += %w[--line-numbers --inline-source --tab-width 2]
-		t.main	   = 'README'
+		t.main	   = 'README.rdoc'
 	end
 rescue LoadError
 	# RDoc not available or too old (<2.4.2)
