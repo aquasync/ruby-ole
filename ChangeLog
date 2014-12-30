@@ -1,3 +1,7 @@
+== 1.2.11.8 / 2014-12-30
+
+- Fix duplicate key warning (github #15 and googlecode #12).
+
 == 1.2.11.7 / 2013-06-24
 
 - Various encoding fixes to make tests pass on current rubies.
