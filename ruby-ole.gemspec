@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
 	s.authors = ['Charles Lowe']
 	s.email = %q{aquasync@gmail.com}
 	s.homepage = %q{https://github.com/aquasync/ruby-ole}
+	s.license = "MIT"
 	s.rubyforge_project = %q{ruby-ole}
 
 	s.executables = ['oletool']
