@@ -198,7 +198,7 @@ module Ole
 		attr_reader :flags
 		def initialize flags
 			flags = self.class.parse_mode flags.to_str if flags.respond_to? :to_str
-			raise ArgumentError, "invalid flags - #{flags.inspect}" unless Fixnum === flags
+			raise ArgumentError, "invalid flags - #{flags.inspect}" unless flags.is_a?(1.class)
 			@flags = flags
 		end
 
