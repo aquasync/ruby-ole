@@ -135,7 +135,7 @@ module RecursivelyEnumerable # :nodoc:
 	#
 	# mostly a debugging aid. can specify a different block which will be called
 	# to provide the string form for each node.
-	def to_tree io='', &inspect
+	def to_tree io=''.dup, &inspect
 		inspect ||= :inspect.to_proc
 		io << "- #{inspect[self]}\n"
 		recurse = proc do |node, prefix|

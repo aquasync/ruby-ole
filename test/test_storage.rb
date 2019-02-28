@@ -197,7 +197,7 @@ class TestStorageWrite < Test::Unit::TestCase
 	end
 
 	def test_create_from_scratch_hash
-		io = StringIO.new('')
+		io = StringIO.new(''.dup)
 		Ole::Storage.open(io) { }
 		assert_equal '6bb9d6c1cdf1656375e30991948d70c5fff63d57', sha1(io.string)
 		# more repack test, note invariance

@@ -879,14 +879,14 @@ end
 
 class OleUnicodeTest < Test::Unit::TestCase
 	def setup
-		@io = StringIO.new ''
+		@io = StringIO.new ''.dup
 	end
 	
 	def test_unicode
 		# in ruby-1.8, encoding is assumed to be UTF-8 (and converted with iconv).
 		# in ruby-1.9, UTF-8 should work also, but probably shouldn't be using fixed
 		# TO_UTF16 iconv for other encodings.
-		resume = "R\xc3\xa9sum\xc3\xa9"
+		resume = "R\xc3\xa9sum\xc3\xa9".dup
 		resume.force_encoding Encoding::UTF_8 if resume.respond_to? :encoding
 		Ole::Storage.open @io do |ole|
 			ole.file.open(resume, 'w') { |f| f.write 'Skills: writing bad unit tests' }
@@ -908,7 +908,7 @@ class OleUnicodeTest < Test::Unit::TestCase
 	end
 
 	def test_write_utf8_string
-		programmer = "programa\xC3\xA7\xC3\xA3o "
+		programmer = "programa\xC3\xA7\xC3\xA3o ".dup
 		programmer.force_encoding Encoding::UTF_8 if programmer.respond_to? :encoding
 		Ole::Storage.open @io do |ole|
 			ole.file.open '1', 'w' do |writer|
