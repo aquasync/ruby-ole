@@ -156,7 +156,7 @@ class RangesIO
 
 	# read bytes from file, to a maximum of +limit+, or all available if unspecified.
 	def read limit=nil
-		data = ''
+		data = ''.dup
 		return data if eof?
 		limit ||= size
 		pos, len = @ranges[@active]
