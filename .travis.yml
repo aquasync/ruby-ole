@@ -21,10 +21,6 @@ rvm:
 
 matrix:
   include:
-    - rvm: 2.3.0
-      env: RUBYOPT=--enable-frozen-string-literal
-    - rvm: 2.4.0
-      env: RUBYOPT=--enable-frozen-string-literal
     - rvm: 2.5.0
       env: RUBYOPT=--enable-frozen-string-literal
     - rvm: 2.6.0
