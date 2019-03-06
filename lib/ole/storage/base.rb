@@ -315,7 +315,7 @@ module Ole # :nodoc:
 					io.binmode
 					repack_using_io io
 				end
-			when :mem;  StringIO.open('', &method(:repack_using_io))
+			when :mem;  StringIO.open(''.dup, &method(:repack_using_io))
 			else raise ArgumentError, "unknown temp backing #{temp.inspect}"
 			end
 		end
