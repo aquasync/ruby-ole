@@ -1,3 +1,7 @@
+== 1.2.12.2 / 2019-03-12
+
+- Fix to work with frozen string literals (github #24, taichi-ishitani).
+
 == 1.2.12.1 / 2017-03-12
 
 - Integer unification for ruby 2.4.0+ (github #19, koic).
