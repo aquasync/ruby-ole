@@ -13,7 +13,6 @@ Gem::Specification.new do |s|
 	s.email = %q{aquasync@gmail.com}
 	s.homepage = %q{https://github.com/aquasync/ruby-ole}
 	s.license = 'MIT'
-	s.rubyforge_project = %q{ruby-ole}
 
 	s.executables = ['oletool']
 	s.files  = ['README.rdoc', 'COPYING', 'Rakefile', 'ChangeLog', 'ruby-ole.gemspec']
