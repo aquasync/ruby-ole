@@ -1,3 +1,7 @@
+== 1.2.13.1 / 2024-03-28
+
+- Try using gemspec metadata to see if it will update rubygems homepage link.
+
 == 1.2.13 / 2024-03-28
 
 - Drop defunct Travis sudo: false directive (github #27, olleolleolle).
