@@ -30,7 +30,8 @@ def oletool
 		when :repack
 			Ole::Storage.open file, 'rb+', &:repack
 		when :metadata
-			Ole::Storage.open(file) { |ole| y ole.meta_data.to_h }
+			require 'yaml'
+			Ole::Storage.open(file) { |ole| puts ole.meta_data.to_h.to_yaml }
 		when :mimetype
 			puts Ole::Storage.open(file) { |ole| ole.meta_data.mime_type }
 		end
