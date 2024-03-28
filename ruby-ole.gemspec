@@ -12,6 +12,7 @@ Gem::Specification.new do |s|
 	s.authors = ['Charles Lowe']
 	s.email = %q{aquasync@gmail.com}
 	s.homepage = %q{https://github.com/aquasync/ruby-ole}
+	s.metadata = {'homepage_uri' => s.homepage}
 	s.license = 'MIT'
 
 	s.executables = ['oletool']
